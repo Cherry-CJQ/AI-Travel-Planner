@@ -167,6 +167,21 @@ export const expenseService = {
     return { data, error }
   },
 
+  // 更新费用记录
+  async updateExpense(expenseId: string, updates: {
+    amount?: number
+    category?: string
+    description?: string
+  }) {
+    const { data, error } = await supabase
+      .from(TABLES.EXPENSES)
+      .update(updates)
+      .eq('id', expenseId)
+      .select()
+    
+    return { data, error }
+  },
+
   // 删除费用记录
   async deleteExpense(expenseId: string) {
     const { error } = await supabase
