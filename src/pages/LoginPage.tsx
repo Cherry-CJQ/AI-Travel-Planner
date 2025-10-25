@@ -1,25 +1,32 @@
 import React from 'react'
-import { Card, Form, Input, Button, Typography, Space } from 'antd'
+import { Card, Form, Input, Button, Typography, Space, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useAppStore } from '../stores/appStore'
 
 const { Title, Link } = Typography
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [form] = Form.useForm()
+  const { login, loading } = useAppStore()
 
-  const onFinish = (values: any) => {
-    console.log('登录:', values)
-    // 后续实现登录逻辑
+  const onFinish = async (values: { email: string; password: string }) => {
+    try {
+      await login(values.email, values.password)
+      message.success('登录成功！')
+      navigate('/')
+    } catch (error: any) {
+      message.error(error.message || '登录失败，请检查邮箱和密码')
+    }
   }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '60vh' 
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '60vh'
     }}>
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -31,6 +38,7 @@ const LoginPage: React.FC = () => {
           name="login"
           onFinish={onFinish}
           layout="vertical"
+          autoComplete="off"
         >
           <Form.Item
             name="email"
@@ -39,10 +47,11 @@ const LoginPage: React.FC = () => {
               { type: 'email', message: '请输入有效的邮箱地址' }
             ]}
           >
-            <Input 
-              prefix={<UserOutlined />} 
-              placeholder="邮箱地址" 
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="邮箱地址"
               size="large"
+              autoComplete="email"
             />
           </Form.Item>
 
@@ -54,11 +63,18 @@ const LoginPage: React.FC = () => {
               prefix={<LockOutlined />}
               placeholder="密码"
               size="large"
+              autoComplete="current-password"
             />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" size="large" block>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              loading={loading}
+            >
               登录
             </Button>
           </Form.Item>

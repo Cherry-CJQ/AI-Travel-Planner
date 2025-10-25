@@ -1,14 +1,49 @@
-import React from 'react'
-import { Typography, Card, Form, Input, Button, Space, Alert } from 'antd'
+import React, { useEffect } from 'react'
+import { Typography, Card, Form, Input, Button, Space, Alert, message } from 'antd'
+import { useAppStore } from '../stores/appStore'
 
 const { Title, Paragraph } = Typography
 
 const SettingsPage: React.FC = () => {
   const [form] = Form.useForm()
+  const { userSettings, updateUserSettings, loading } = useAppStore()
 
-  const onFinish = (values: any) => {
-    console.log('保存设置:', values)
-    // 后续实现保存到localStorage或Supabase
+  useEffect(() => {
+    if (userSettings) {
+      form.setFieldsValue({
+        llmApiKey: userSettings.llm_api_key || '',
+        voiceApiKey: userSettings.voice_api_key || '',
+        mapApiKey: userSettings.map_api_key || ''
+      })
+    }
+  }, [userSettings, form])
+
+  const onFinish = async (values: {
+    llmApiKey: string
+    voiceApiKey?: string
+    mapApiKey?: string
+  }) => {
+    try {
+      await updateUserSettings({
+        llm_api_key: values.llmApiKey,
+        voice_api_key: values.voiceApiKey || undefined,
+        map_api_key: values.mapApiKey || undefined
+      })
+      message.success('设置保存成功！')
+    } catch (error: any) {
+      message.error(error.message || '保存设置失败')
+    }
+  }
+
+  const handleReset = () => {
+    form.resetFields()
+    if (userSettings) {
+      form.setFieldsValue({
+        llmApiKey: userSettings.llm_api_key || '',
+        voiceApiKey: userSettings.voice_api_key || '',
+        mapApiKey: userSettings.map_api_key || ''
+      })
+    }
   }
 
   return (
@@ -60,10 +95,14 @@ const SettingsPage: React.FC = () => {
 
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+              >
                 保存设置
               </Button>
-              <Button onClick={() => form.resetFields()}>
+              <Button onClick={handleReset}>
                 重置
               </Button>
             </Space>

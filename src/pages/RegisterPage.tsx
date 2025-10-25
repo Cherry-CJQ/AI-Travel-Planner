@@ -1,25 +1,37 @@
 import React from 'react'
-import { Card, Form, Input, Button, Typography, Space } from 'antd'
+import { Card, Form, Input, Button, Typography, Space, message } from 'antd'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useAppStore } from '../stores/appStore'
 
 const { Title, Link } = Typography
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate()
   const [form] = Form.useForm()
+  const { register, loading } = useAppStore()
 
-  const onFinish = (values: any) => {
-    console.log('注册:', values)
-    // 后续实现注册逻辑
+  const onFinish = async (values: {
+    name: string;
+    email: string;
+    password: string;
+    confirmPassword: string
+  }) => {
+    try {
+      await register(values.email, values.password, values.name)
+      message.success('注册成功！请检查邮箱确认邮件（如需要）')
+      navigate('/')
+    } catch (error: any) {
+      message.error(error.message || '注册失败，请稍后重试')
+    }
   }
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '60vh' 
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '60vh'
     }}>
       <Card style={{ width: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -31,15 +43,17 @@ const RegisterPage: React.FC = () => {
           name="register"
           onFinish={onFinish}
           layout="vertical"
+          autoComplete="off"
         >
           <Form.Item
             name="name"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
-            <Input 
-              prefix={<UserOutlined />} 
-              placeholder="用户名" 
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="用户名"
               size="large"
+              autoComplete="name"
             />
           </Form.Item>
 
@@ -50,10 +64,11 @@ const RegisterPage: React.FC = () => {
               { type: 'email', message: '请输入有效的邮箱地址' }
             ]}
           >
-            <Input 
-              prefix={<MailOutlined />} 
-              placeholder="邮箱地址" 
+            <Input
+              prefix={<MailOutlined />}
+              placeholder="邮箱地址"
               size="large"
+              autoComplete="email"
             />
           </Form.Item>
 
@@ -68,6 +83,7 @@ const RegisterPage: React.FC = () => {
               prefix={<LockOutlined />}
               placeholder="密码"
               size="large"
+              autoComplete="new-password"
             />
           </Form.Item>
 
@@ -90,11 +106,18 @@ const RegisterPage: React.FC = () => {
               prefix={<LockOutlined />}
               placeholder="确认密码"
               size="large"
+              autoComplete="new-password"
             />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" size="large" block>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              loading={loading}
+            >
               注册
             </Button>
           </Form.Item>

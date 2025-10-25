@@ -1,16 +1,43 @@
 import React from 'react'
-import { Layout, Typography, Button, Space, Avatar, Dropdown } from 'antd'
+import { Layout, Typography, Button, Space, Avatar, Dropdown, message } from 'antd'
 import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useAppStore } from '../../stores/appStore'
 
 const { Header: AntHeader } = Layout
-const { Title } = Typography
+const { Title, Text } = Typography
 
 const Header: React.FC = () => {
   const navigate = useNavigate()
-  const isLoggedIn = false // 暂时硬编码，后续从状态管理获取
+  const { user, isAuthenticated, logout } = useAppStore()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      message.success('已成功退出登录')
+      navigate('/')
+    } catch (error) {
+      message.error('退出登录失败')
+    }
+  }
 
   const userMenuItems = [
+    {
+      key: 'user-info',
+      label: (
+        <div style={{ padding: '8px 12px' }}>
+          <Text strong>{user?.name}</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            {user?.email}
+          </Text>
+        </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: 'divider' as const,
+    },
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -21,10 +48,7 @@ const Header: React.FC = () => {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: '退出登录',
-      onClick: () => {
-        // 后续实现退出登录逻辑
-        console.log('退出登录')
-      }
+      onClick: handleLogout
     }
   ]
 
@@ -40,16 +64,17 @@ const Header: React.FC = () => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0, color: '#1890ff' }}>
+        <Title level={3} style={{ margin: 0, color: '#1890ff', cursor: 'pointer' }}
+          onClick={() => navigate('/')}>
           🗺️ AI旅行规划助手
         </Title>
       </div>
 
       <Space>
-        {isLoggedIn ? (
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <Button type="text" icon={<UserOutlined />}>
-              用户
+        {isAuthenticated && user ? (
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+            <Button type="text" icon={<UserOutlined />} style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginLeft: 8 }}>{user.name}</span>
             </Button>
           </Dropdown>
         ) : (
