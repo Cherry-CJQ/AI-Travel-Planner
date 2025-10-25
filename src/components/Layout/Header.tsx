@@ -60,29 +60,68 @@ const Header: React.FC = () => {
         borderBottom: '1px solid #f0f0f0',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        height: '64px',
+        lineHeight: '64px'
       }}
+      className="mobile-padding-sm"
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0, color: '#1890ff', cursor: 'pointer' }}
-          onClick={() => navigate('/')}>
-          🗺️ AI旅行规划助手
+        <Title
+          level={3}
+          style={{
+            margin: 0,
+            color: '#1890ff',
+            cursor: 'pointer',
+            fontSize: 'clamp(16px, 4vw, 20px)'
+          }}
+          onClick={() => navigate('/')}
+          className="mobile-text-center"
+        >
+          <span className="desktop-hidden">🗺️</span>
+          <span className="mobile-hidden">🗺️ AI旅行规划助手</span>
+          <span className="desktop-hidden tablet-hidden">AI旅行助手</span>
         </Title>
       </div>
 
-      <Space>
+      <Space size="middle" wrap>
         {isAuthenticated && user ? (
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
-            <Button type="text" icon={<UserOutlined />} style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ marginLeft: 8 }}>{user.name}</span>
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            placement="bottomRight"
+            arrow
+            trigger={['click']}
+          >
+            <Button
+              type="text"
+              icon={<UserOutlined />}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                height: 'auto',
+                padding: '8px 12px'
+              }}
+              className="mobile-full-width"
+            >
+              <span className="mobile-hidden" style={{ marginLeft: 8 }}>
+                {user.name}
+              </span>
             </Button>
           </Dropdown>
         ) : (
-          <Space>
-            <Button type="text" onClick={() => navigate('/login')}>
+          <Space size="small" wrap>
+            <Button
+              type="text"
+              onClick={() => navigate('/login')}
+              className="mobile-full-width"
+            >
               登录
             </Button>
-            <Button type="primary" onClick={() => navigate('/register')}>
+            <Button
+              type="primary"
+              onClick={() => navigate('/register')}
+              className="mobile-full-width"
+            >
               注册
             </Button>
           </Space>

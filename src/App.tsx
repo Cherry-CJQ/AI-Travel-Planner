@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Layout } from 'antd'
 import Header from './components/Layout/Header'
 import Sidebar from './components/Layout/Sidebar'
+import MobileBottomNav from './components/Layout/MobileBottomNav'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 import HomePage from './pages/HomePage'
 import TripsPage from './pages/TripsPage'
@@ -21,7 +22,7 @@ const App: React.FC = () => {
         <Header />
         <Layout>
           <Sidebar />
-          <Layout style={{ padding: '24px' }}>
+          <Layout style={{ padding: '24px', paddingBottom: '80px' }} className="mobile-padding-sm">
             <Content
               style={{
                 background: '#fff',
@@ -30,6 +31,7 @@ const App: React.FC = () => {
                 minHeight: 280,
                 borderRadius: 8,
               }}
+              className="mobile-full-width mobile-padding-sm"
             >
               <Routes>
                 <Route path="/" element={<HomePage />} />
@@ -86,6 +88,9 @@ const App: React.FC = () => {
           </Layout>
         </Layout>
       </Layout>
+      
+      {/* 移动端底部导航 */}
+      <MobileBottomNav />
     </Router>
   )
 }

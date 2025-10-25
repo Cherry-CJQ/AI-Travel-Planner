@@ -67,14 +67,24 @@ const TripsPage: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={2}>我的行程</Title>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+        flexWrap: 'wrap',
+        gap: '12px'
+      }} className="mobile-full-width mobile-text-center">
+        <Title level={2} style={{ margin: 0 }}>我的行程</Title>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => navigate('/trip/new')}
+          className="mobile-full-width"
+          size="large"
         >
-          新建行程
+          <span className="mobile-hidden">新建行程</span>
+          <span className="desktop-hidden">新建</span>
         </Button>
       </div>
 
@@ -102,7 +112,7 @@ const TripsPage: React.FC = () => {
           grid={{
             gutter: 16,
             xs: 1,
-            sm: 2,
+            sm: 1,
             md: 2,
             lg: 3,
             xl: 3,
@@ -112,24 +122,31 @@ const TripsPage: React.FC = () => {
           renderItem={(trip) => (
             <List.Item>
               <Card
-                title={trip.title}
+                title={
+                  <Text ellipsis={{ tooltip: trip.title }} style={{ maxWidth: '100%' }}>
+                    {trip.title}
+                  </Text>
+                }
                 extra={
-                  <Space>
+                  <Space size="small" className="mobile-hidden">
                     <Button
                       type="text"
                       icon={<EyeOutlined />}
                       onClick={() => handleViewTrip(trip)}
+                      size="small"
                     />
                     <Button
                       type="text"
                       icon={<EditOutlined />}
                       onClick={() => handleEditTrip(trip)}
+                      size="small"
                     />
                     <Button
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
                       onClick={() => handleDeleteTrip(trip)}
+                      size="small"
                     />
                   </Space>
                 }
@@ -137,28 +154,33 @@ const TripsPage: React.FC = () => {
                   <Button
                     type="link"
                     onClick={() => handleViewTrip(trip)}
+                    className="mobile-full-width"
                   >
                     查看详情
                   </Button>
                 ]}
+                size="small"
+                className="mobile-full-width"
               >
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 8 }}>
                   <Text strong>目的地：</Text>
-                  <Text>{trip.destination}</Text>
+                  <Text ellipsis={{ tooltip: trip.destination }}>
+                    {trip.destination}
+                  </Text>
                 </div>
-                <div style={{ marginBottom: 12 }}>
-                  <Text strong>行程天数：</Text>
+                <div style={{ marginBottom: 8 }}>
+                  <Text strong>天数：</Text>
                   <Text>{trip.duration} 天</Text>
                 </div>
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 8 }}>
                   <Text strong>预算：</Text>
                   <Tag color={getBudgetLevel(trip.budget)}>
                     {formatBudget(trip.budget)}
                   </Tag>
                 </div>
                 <div>
-                  <Text type="secondary">
-                    创建时间：{new Date(trip.created_at).toLocaleDateString()}
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {new Date(trip.created_at).toLocaleDateString()}
                   </Text>
                 </div>
               </Card>

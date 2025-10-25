@@ -1,16 +1,14 @@
 import React from 'react'
-import { Layout, Menu } from 'antd'
+import { Menu } from 'antd'
 import { 
   HomeOutlined, 
   CompassOutlined, 
   SettingOutlined,
-  FileTextOutlined
+  PlusOutlined
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 
-const { Sider } = Layout
-
-const Sidebar: React.FC = () => {
+const MobileBottomNav: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -23,7 +21,12 @@ const Sidebar: React.FC = () => {
     {
       key: '/trips',
       icon: <CompassOutlined />,
-      label: '我的行程',
+      label: '行程',
+    },
+    {
+      key: '/trip/new',
+      icon: <PlusOutlined />,
+      label: '新建',
     },
     {
       key: '/settings',
@@ -33,36 +36,35 @@ const Sidebar: React.FC = () => {
   ]
 
   return (
-    <Sider
-      width={200}
+    <div
       style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
         background: '#fff',
-        borderRight: '1px solid #f0f0f0',
+        borderTop: '1px solid #f0f0f0',
+        zIndex: 1000,
+        height: '56px',
       }}
-      breakpoint="lg"
-      collapsedWidth="0"
-      zeroWidthTriggerStyle={{
-        top: 12,
-        right: -36,
-        color: '#1890ff',
-        background: '#fff',
-        border: '1px solid #f0f0f0',
-      }}
-      className="mobile-hidden"
+      className="desktop-hidden"
     >
       <Menu
-        mode="inline"
+        mode="horizontal"
         selectedKeys={[location.pathname]}
         items={menuItems}
         onClick={({ key }) => navigate(key)}
         style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
           height: '100%',
-          borderRight: 0,
-          paddingTop: '16px',
+          border: 'none',
+          background: 'transparent',
         }}
       />
-    </Sider>
+    </div>
   )
 }
 
-export default Sidebar
+export default MobileBottomNav

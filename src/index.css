@@ -74,15 +74,117 @@ html, body {
 }
 
 /* 响应式断点 */
+/* 移动端 (0-768px) */
 @media (max-width: 768px) {
   .mobile-hidden {
     display: none;
   }
+  
+  .mobile-full-width {
+    width: 100%;
+  }
+  
+  .mobile-text-center {
+    text-align: center;
+  }
+  
+  .mobile-padding-sm {
+    padding: 8px;
+  }
+  
+  .mobile-margin-sm {
+    margin: 8px;
+  }
+  
+  /* 移动端字体大小调整 */
+  .ant-typography {
+    font-size: 14px;
+  }
+  
+  .ant-card {
+    margin-bottom: 12px;
+  }
+  
+  .ant-layout-content {
+    padding: 12px !important;
+  }
 }
 
-@media (min-width: 769px) {
+/* 平板端 (769px-1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .tablet-hidden {
+    display: none;
+  }
+  
+  .tablet-full-width {
+    width: 100%;
+  }
+}
+
+/* 桌面端 (1025px+) */
+@media (min-width: 1025px) {
   .desktop-hidden {
     display: none;
+  }
+}
+
+/* 超小屏幕 (0-480px) */
+@media (max-width: 480px) {
+  .xs-hidden {
+    display: none;
+  }
+  
+  .ant-layout-header {
+    padding: 0 12px !important;
+  }
+  
+  .ant-layout-sider {
+    width: 160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
+  }
+  
+  .ant-menu-item {
+    padding: 0 12px !important;
+  }
+  
+  .ant-card-body {
+    padding: 12px !important;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .ant-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .ant-menu-item {
+    min-height: 44px;
+    line-height: 44px;
+  }
+  
+  .ant-input, .ant-select-selector {
+    min-height: 44px;
+  }
+  
+  .ant-tabs-tab {
+    padding: 12px 16px;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #1f1f1f;
+    --text-color: #ffffff;
+    --border-color: #434343;
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
   }
 }
 
