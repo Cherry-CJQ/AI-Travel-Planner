@@ -19,8 +19,8 @@ const SettingsPage: React.FC = () => {
       </Paragraph>
 
       <Alert
-        message="安全提示"
-        description="所有API密钥将安全存储在您的浏览器本地存储中，不会上传到服务器。请妥善保管您的密钥。"
+        message="配置说明"
+        description="语音识别和地图服务已由系统提供，您只需配置LLM API密钥即可使用AI行程规划功能。"
         type="info"
         showIcon
         style={{ marginBottom: 24 }}
@@ -37,24 +37,25 @@ const SettingsPage: React.FC = () => {
             label="阿里云百炼 LLM API Key"
             name="llmApiKey"
             rules={[{ required: true, message: '请输入LLM API Key' }]}
+            extra="必须配置，用于AI行程规划和预算分析"
           >
             <Input.Password placeholder="请输入您的阿里云百炼API密钥" />
           </Form.Item>
 
           <Form.Item
-            label="科大讯飞语音识别 API Key"
+            label="科大讯飞语音识别 API Key (可选)"
             name="voiceApiKey"
-            rules={[{ required: true, message: '请输入语音识别API Key' }]}
+            extra="可选配置，如不配置将使用系统提供的语音识别服务"
           >
-            <Input.Password placeholder="请输入您的科大讯飞API密钥" />
+            <Input.Password placeholder="如需使用个人语音识别服务，请在此输入" />
           </Form.Item>
 
           <Form.Item
-            label="高德地图 API Key"
+            label="高德地图 API Key (可选)"
             name="mapApiKey"
-            rules={[{ required: true, message: '请输入地图API Key' }]}
+            extra="可选配置，如不配置将使用系统提供的地图服务"
           >
-            <Input.Password placeholder="请输入您的高德地图API密钥" />
+            <Input.Password placeholder="如需使用个人地图服务，请在此输入" />
           </Form.Item>
 
           <Form.Item>
