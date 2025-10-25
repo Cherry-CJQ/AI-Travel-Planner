@@ -4,6 +4,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-de
 import { useTripStore } from '../stores/tripStore'
 import { Trip } from '../types/database'
 import { useNavigate } from 'react-router-dom'
+import { NoDataEmpty, ErrorEmpty } from '../components/Empty/EmptyState'
+import { PageLoading } from '../components/Loading/LoadingSpinner'
 
 const { Title, Text } = Typography
 
@@ -89,24 +91,12 @@ const TripsPage: React.FC = () => {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '50px' }}>
-          <Spin size="large" />
-        </div>
+        <PageLoading message="正在加载行程数据..." />
       ) : trips.length === 0 ? (
-        <Card>
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <Title level={4} type="secondary">暂无行程记录</Title>
-            <Text type="secondary">开始规划您的第一个旅行行程</Text>
-            <br />
-            <Button
-              type="primary"
-              style={{ marginTop: 16 }}
-              onClick={() => navigate('/trip/new')}
-            >
-              开始规划
-            </Button>
-          </div>
-        </Card>
+        <NoDataEmpty
+          entity="行程"
+          onCreate={() => navigate('/trip/new')}
+        />
       ) : (
         <List
           grid={{
