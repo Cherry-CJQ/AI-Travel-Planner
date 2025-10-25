@@ -38,25 +38,27 @@ export const useTripStore = create<TripStore>((set, get) => ({
     try {
       const { userSettings } = useAppStore.getState()
       
-      // 检查API Key配置
-      if (!userSettings?.llm_api_key) {
-        throw new Error('请先在设置页面配置阿里云百炼API Key')
+      // 如果有API Key，使用真实服务；否则使用模拟数据
+      if (userSettings?.llm_api_key) {
+        // 初始化LLM服务，启用代理
+        initializeLLMService(userSettings.llm_api_key, {
+          useProxy: true
+        })
+      } else {
+        console.log('未配置API Key，使用模拟数据生成旅行计划')
       }
 
-      // 初始化LLM服务
-      initializeLLMService(userSettings.llm_api_key)
-
-      // 调用LLM生成计划
+      // 调用LLM生成计划（会自动使用模拟数据）
       const plan = await llmService.generateTripPlan(request)
       
-      set({ 
+      set({
         generatedPlan: plan,
-        loading: false 
+        loading: false
       })
     } catch (error: any) {
-      set({ 
+      set({
         error: error.message || '生成旅行计划失败',
-        loading: false 
+        loading: false
       })
       throw error
     }

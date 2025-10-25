@@ -1,4 +1,5 @@
--- AI旅行规划助手数据库表结构 - 修正版
+-- AI旅行规划助手数据库表结构 - 独立认证版本
+-- 此版本不依赖Supabase Auth，使用独立的用户表
 
 -- 启用UUID扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -52,8 +53,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE TABLE IF NOT EXISTS user_settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
-  aliyun_access_key_id TEXT,
-  aliyun_access_key_secret TEXT,
+  llm_api_key TEXT,
   voice_api_key TEXT,
   map_api_key TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -68,44 +68,9 @@ CREATE INDEX IF NOT EXISTS idx_daily_plans_trip_id ON daily_plans(trip_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_trip_id ON expenses(trip_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses(created_at DESC);
 
--- 创建行级安全策略 (RLS)
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE daily_plans ENABLE ROW LEVEL SECURITY;
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
-
--- 用户表策略：用户只能访问自己的数据
-CREATE POLICY "用户只能访问自己的数据" ON users
-  FOR ALL USING (auth.uid() = id);
-
--- 行程表策略：用户只能访问自己的行程
-CREATE POLICY "用户只能访问自己的行程" ON trips
-  FOR ALL USING (auth.uid() = user_id);
-
--- 每日计划表策略：用户只能访问自己行程的计划
-CREATE POLICY "用户只能访问自己行程的计划" ON daily_plans
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM trips 
-      WHERE trips.id = daily_plans.trip_id 
-      AND trips.user_id = auth.uid()
-    )
-  );
-
--- 费用表策略：用户只能访问自己行程的费用
-CREATE POLICY "用户只能访问自己行程的费用" ON expenses
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM trips 
-      WHERE trips.id = expenses.trip_id 
-      AND trips.user_id = auth.uid()
-    )
-  );
-
--- 用户设置表策略：用户只能访问自己的设置
-CREATE POLICY "用户只能访问自己的设置" ON user_settings
-  FOR ALL USING (auth.uid() = user_id);
+-- 注意：此版本不启用行级安全策略 (RLS)
+-- 因为我们的应用使用独立的用户认证系统
+-- 如果需要RLS，需要基于应用的用户ID实现自定义策略
 
 -- 创建触发器函数：自动更新updated_at字段
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -154,3 +119,19 @@ SELECT
   'user_settings',
   COUNT(*) 
 FROM user_settings;
+
+-- 插入测试数据（可选）
+-- INSERT INTO users (email, password_hash, name) VALUES 
+-- ('test@example.com', '$2b$10$examplehash', '测试用户');
+
+-- 显示表结构信息
+SELECT 
+  table_name,
+  column_name,
+  data_type,
+  is_nullable,
+  column_default
+FROM information_schema.columns 
+WHERE table_schema = 'public' 
+  AND table_name IN ('users', 'trips', 'daily_plans', 'expenses', 'user_settings')
+ORDER BY table_name, ordinal_position;

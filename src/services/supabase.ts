@@ -16,47 +16,11 @@ export const TABLES = {
   USER_SETTINGS: 'user_settings'
 } as const
 
-// 用户认证相关操作
-export const authService = {
-  // 用户注册
-  async signUp(email: string, password: string, name: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-        },
-      },
-    })
-    return { data, error }
-  },
+// 导入本地认证服务
+import { localAuthService } from './localAuthService'
 
-  // 用户登录
-  async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { data, error }
-  },
-
-  // 用户登出
-  async signOut() {
-    const { error } = await supabase.auth.signOut()
-    return { error }
-  },
-
-  // 获取当前用户
-  getCurrentUser() {
-    return supabase.auth.getUser()
-  },
-
-  // 监听认证状态变化
-  onAuthStateChange(callback: any) {
-    return supabase.auth.onAuthStateChange(callback)
-  }
-}
+// 用户认证相关操作 - 使用本地认证服务
+export const authService = localAuthService
 
 // 行程数据操作
 export const tripService = {

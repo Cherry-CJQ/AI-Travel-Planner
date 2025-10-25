@@ -49,11 +49,11 @@ export const useAppStore = create<AppStore>()(
             return
           }
           
-          if (data.user) {
+          if (data && data.user) {
             const user: User = {
               id: data.user.id,
-              email: data.user.email!,
-              name: data.user.user_metadata?.name || '用户',
+              email: data.user.email,
+              name: data.user.name || '用户',
               created_at: data.user.created_at || new Date().toISOString(),
               updated_at: data.user.updated_at || new Date().toISOString()
             }
@@ -85,11 +85,11 @@ export const useAppStore = create<AppStore>()(
             return
           }
           
-          if (data.user) {
+          if (data && data.user) {
             const user: User = {
               id: data.user.id,
-              email: data.user.email!,
-              name: data.user.user_metadata?.name || '用户',
+              email: data.user.email,
+              name: data.user.name || '用户',
               created_at: data.user.created_at || new Date().toISOString(),
               updated_at: data.user.updated_at || new Date().toISOString()
             }
@@ -164,32 +164,5 @@ export const useAppStore = create<AppStore>()(
   )
 )
 
-// 初始化认证状态监听
-authService.onAuthStateChange((event: string, session: any) => {
-  const store = useAppStore.getState()
-  
-  if (event === 'SIGNED_IN' && session?.user) {
-    const user: User = {
-      id: session.user.id,
-      email: session.user.email!,
-      name: session.user.user_metadata?.name || '用户',
-      created_at: session.user.created_at || new Date().toISOString(),
-      updated_at: session.user.updated_at || new Date().toISOString()
-    }
-    
-    store.setUser(user)
-    store.setAuthenticated(true)
-    
-    // 加载用户设置
-    userSettingsService.getUserSettings(user.id).then(({ data }) => {
-      if (data) {
-        store.setUserSettings(data)
-      }
-    })
-  } else if (event === 'SIGNED_OUT') {
-    store.setUser(null)
-    store.setAuthenticated(false)
-    store.setUserSettings(null)
-    store.setCurrentTrip(null)
-  }
-})
+// 本地认证不需要监听状态变化
+// 认证状态由zustand的持久化存储管理

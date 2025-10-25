@@ -77,7 +77,7 @@ npm run dev
 
 3. **阿里云百炼**
    - 开通阿里云百炼服务
-   - 获取AccessKey ID和Secret
+   - 获取API Key
 
 ### 详细配置指南
 请参考 [CONFIGURATION.md](./CONFIGURATION.md) 获取完整的配置说明。
