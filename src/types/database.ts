@@ -16,6 +16,11 @@ export interface Trip {
   duration: number
   budget: number
   preferences?: string[]
+  travel_style?: string
+  travelers?: number
+  start_date?: string
+  end_date?: string
+  special_requirements?: string
   created_at: string
   updated_at: string
 }
@@ -84,6 +89,12 @@ export interface TripGenerationResponse {
     estimatedTotalCost: number
     destination: string
     duration: number
+    preferences?: string[]
+    travelStyle?: string
+    travelers?: number
+    startDate?: string
+    endDate?: string
+    specialRequirements?: string
   }
   budgetBreakdown: {
     flights?: number
@@ -118,6 +129,15 @@ export interface AppState {
   isAuthenticated: boolean
   currentTrip: Trip | null
   userSettings: UserSettings | null
+  loading: boolean
+  error: string | null
+}
+
+// Trip Store 状态类型
+export interface TripStoreState {
+  currentTrip: Trip | null
+  generatedPlan: TripGenerationResponse | null
+  originalRequest: TripGenerationRequest | null
   loading: boolean
   error: string | null
 }

@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS trips (
   duration INTEGER NOT NULL CHECK (duration > 0),
   budget DECIMAL(10,2) NOT NULL CHECK (budget >= 0),
   preferences TEXT[] DEFAULT '{}',
+  travel_style TEXT,
+  travelers INTEGER DEFAULT 1,
+  start_date TIMESTAMP WITH TIME ZONE,
+  end_date TIMESTAMP WITH TIME ZONE,
+  special_requirements TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

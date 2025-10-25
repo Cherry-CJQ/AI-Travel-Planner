@@ -43,6 +43,11 @@ export const tripService = {
     duration: number
     budget: number
     preferences?: string[]
+    travel_style?: string
+    travelers?: number
+    start_date?: string
+    end_date?: string
+    special_requirements?: string
   }) {
     const { data, error } = await supabase
       .from(TABLES.TRIPS)

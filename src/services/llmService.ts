@@ -182,7 +182,13 @@ class LLMService {
         title: `${destination}${duration}日${travelStyle}之旅`,
         estimatedTotalCost: totalBudget,
         destination,
-        duration
+        duration,
+        preferences: request.preferences || [],
+        travelStyle: request.travelStyle,
+        travelers: request.travelers,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        specialRequirements: request.specialRequirements
       },
       budgetBreakdown,
       dailyPlan
@@ -502,7 +508,13 @@ class LLMService {
         title: data.tripSummary?.title || '旅行计划',
         estimatedTotalCost: data.tripSummary?.estimatedTotalCost || 0,
         destination: data.tripSummary?.destination || '',
-        duration: data.tripSummary?.duration || 0
+        duration: data.tripSummary?.duration || 0,
+        preferences: data.tripSummary?.preferences || [],
+        travelStyle: data.tripSummary?.travelStyle || '',
+        travelers: data.tripSummary?.travelers || 1,
+        startDate: data.tripSummary?.startDate,
+        endDate: data.tripSummary?.endDate,
+        specialRequirements: data.tripSummary?.specialRequirements
       },
       budgetBreakdown,
       dailyPlan

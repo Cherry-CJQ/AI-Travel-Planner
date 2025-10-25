@@ -1,17 +1,18 @@
 import React, { useState } from 'react'
-import { 
-  Form, 
-  Input, 
-  Select, 
-  DatePicker, 
-  InputNumber, 
-  Button, 
-  Card, 
-  Space, 
+import {
+  Form,
+  Input,
+  Select,
+  DatePicker,
+  InputNumber,
+  Button,
+  Card,
+  Space,
   message,
   Row,
   Col,
-  Tag
+  Tag,
+  Typography
 } from 'antd'
 import { PlusOutlined, MinusOutlined } from '@ant-design/icons'
 import { TripGenerationRequest } from '../../types/database'
@@ -20,6 +21,7 @@ import { useAppStore } from '../../stores/appStore'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
+const { Text } = Typography
 
 interface TripGenerationFormProps {
   onSuccess?: (plan: any) => void
@@ -63,6 +65,14 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
 
   const handleSubmit = async (values: any) => {
     try {
+      // 检查是否有未添加的偏好输入
+      if (newPreference.trim() && !preferences.includes(newPreference.trim())) {
+        // 自动添加未保存的偏好
+        setPreferences([...preferences, newPreference.trim()])
+        setNewPreference('')
+        message.info(`已自动添加偏好: ${newPreference.trim()}`)
+      }
+
       const request: TripGenerationRequest = {
         destination: values.destination,
         duration: values.duration,
@@ -191,7 +201,16 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
           </Col>
         </Row>
 
-        <Form.Item label="个人偏好">
+        <Form.Item
+          label="个人偏好"
+          extra={
+            newPreference.trim() && !preferences.includes(newPreference.trim()) && (
+              <span style={{ color: '#faad14' }}>
+                提示：您有未保存的偏好 "{newPreference}"，点击"生成旅行计划"按钮时会自动添加
+              </span>
+            )
+          }
+        >
           <Space direction="vertical" style={{ width: '100%' }}>
             <Space.Compact style={{ width: '100%' }}>
               <Input
@@ -199,11 +218,18 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                 onChange={(e) => setNewPreference(e.target.value)}
                 placeholder="添加个人偏好（如：喜欢博物馆、不吃辣等）"
                 onPressEnter={addPreference}
+                onBlur={() => {
+                  // 输入框失去焦点时自动添加
+                  if (newPreference.trim() && !preferences.includes(newPreference.trim())) {
+                    addPreference()
+                  }
+                }}
               />
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 icon={<PlusOutlined />}
                 onClick={addPreference}
+                disabled={!newPreference.trim() || preferences.includes(newPreference.trim())}
               >
                 添加
               </Button>

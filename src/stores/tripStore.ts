@@ -1,13 +1,14 @@
 import { create } from 'zustand'
 import { Trip, TripGenerationRequest, TripGenerationResponse } from '../types/database'
 import { llmService, initializeLLMService } from '../services/llmService'
-import { tripService } from '../services/supabase'
+import { tripService, dailyPlanService, expenseService } from '../services/supabase'
 import { useAppStore } from './appStore'
 
 interface TripStore {
   // 状态
   currentTrip: Trip | null
   generatedPlan: TripGenerationResponse | null
+  originalRequest: TripGenerationRequest | null
   loading: boolean
   error: string | null
   
@@ -28,6 +29,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
   // 初始状态
   currentTrip: null,
   generatedPlan: null,
+  originalRequest: null,
   loading: false,
   error: null,
 
@@ -53,6 +55,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
       
       set({
         generatedPlan: plan,
+        originalRequest: request, // 保存原始请求数据
         loading: false
       })
     } catch (error: any) {
@@ -66,7 +69,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
 
   // 保存生成的行程
   saveGeneratedTrip: async (title?: string) => {
-    const { generatedPlan } = get()
+    const { generatedPlan, originalRequest } = get()
     const { user } = useAppStore.getState()
 
     if (!generatedPlan || !user) {
@@ -76,35 +79,69 @@ export const useTripStore = create<TripStore>((set, get) => ({
     set({ loading: true })
 
     try {
+      // 保存基本行程信息 - 从原始请求中获取用户输入的数据
       const tripData = {
         user_id: user.id,
         title: title || generatedPlan.tripSummary.title,
         destination: generatedPlan.tripSummary.destination,
         duration: generatedPlan.tripSummary.duration,
         budget: generatedPlan.tripSummary.estimatedTotalCost,
-        preferences: [] // 可以从请求中获取，这里简化处理
+        preferences: originalRequest?.preferences || [],
+        travel_style: originalRequest?.travelStyle || '',
+        travelers: originalRequest?.travelers || 1,
+        start_date: originalRequest?.startDate,
+        end_date: originalRequest?.endDate,
+        special_requirements: originalRequest?.specialRequirements
       }
 
-      const { data, error } = await tripService.createTrip(tripData)
+      console.log('保存行程数据:', tripData)
+
+      const { data: tripDataResult, error: tripError } = await tripService.createTrip(tripData)
       
-      if (error) {
-        throw new Error(error.message)
+      if (tripError) {
+        console.error('保存行程失败:', tripError)
+        throw new Error(tripError.message)
       }
 
-      if (data && data[0]) {
-        const savedTrip = data[0]
-        set({ 
-          currentTrip: savedTrip,
-          loading: false 
-        })
-        return savedTrip.id
+      if (!tripDataResult || !tripDataResult[0]) {
+        console.error('保存行程失败: 没有返回数据')
+        throw new Error('保存行程失败')
       }
 
-      throw new Error('保存行程失败')
+      console.log('行程保存成功:', tripDataResult[0])
+
+      const savedTrip = tripDataResult[0]
+
+      // 保存每日计划
+      for (const dayPlan of generatedPlan.dailyPlan) {
+        const dailyPlanData = {
+          trip_id: savedTrip.id,
+          day_number: dayPlan.day,
+          theme: dayPlan.theme,
+          activities: dayPlan.activities
+        }
+
+        const { error: dailyPlanError } = await dailyPlanService.createDailyPlan(dailyPlanData)
+        
+        if (dailyPlanError) {
+          console.error('保存每日计划失败:', dailyPlanError)
+          // 继续保存其他每日计划，不中断整个流程
+        }
+      }
+
+      // 注意：预算分解只是预算规划，不是实际支出记录
+      // 实际支出记录应该由用户在行程中手动添加
+      console.log('预算分解信息（仅用于展示，不保存为支出记录）:', generatedPlan.budgetBreakdown)
+
+      set({
+        currentTrip: savedTrip,
+        loading: false
+      })
+      return savedTrip.id
     } catch (error: any) {
-      set({ 
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
       throw error
     }
@@ -112,7 +149,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
 
   // 清除生成的计划
   clearGeneratedPlan: () => {
-    set({ generatedPlan: null, error: null })
+    set({ generatedPlan: null, originalRequest: null, error: null })
   },
 
   // 设置当前行程
