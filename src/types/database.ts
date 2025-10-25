@@ -30,14 +30,18 @@ export interface DailyPlan {
   updated_at: string
 }
 
+// LLM响应中的DailyPlan结构
+export interface LLMDailyPlan {
+  day: number
+  theme: string
+  activities: Activity[]
+}
+
 export interface Activity {
   time: string
   name: string
   description: string
-  location?: {
-    lat: number
-    lng: number
-  }
+  location?: MapLocation
   type: 'TRANSPORT' | 'ACCOMMODATION' | 'FOOD' | 'SIGHTSEEING' | 'SHOPPING' | 'OTHER'
   cost?: number
 }
@@ -64,10 +68,14 @@ export interface UserSettings {
 // LLM行程生成请求和响应类型
 export interface TripGenerationRequest {
   destination: string
-  duration: string
-  budget: number
+  duration: number
+  budgetRange: string
+  travelStyle: string
+  startDate?: string
+  endDate?: string
+  travelers: number
   preferences: string[]
-  travelers: string
+  specialRequirements?: string
 }
 
 export interface TripGenerationResponse {
@@ -86,7 +94,7 @@ export interface TripGenerationResponse {
     shopping?: number
     other?: number
   }
-  dailyPlan: DailyPlan[]
+  dailyPlan: LLMDailyPlan[]
 }
 
 // 语音识别相关类型
