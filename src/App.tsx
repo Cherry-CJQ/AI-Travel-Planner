@@ -6,6 +6,8 @@ import Sidebar from './components/Layout/Sidebar'
 import ProtectedRoute from './components/Auth/ProtectedRoute'
 import HomePage from './pages/HomePage'
 import TripsPage from './pages/TripsPage'
+import TripDetailPage from './pages/TripDetailPage'
+import TripCreatePage from './pages/TripCreatePage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -36,6 +38,22 @@ const App: React.FC = () => {
                   element={
                     <ProtectedRoute>
                       <TripsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trip/:tripId"
+                  element={
+                    <ProtectedRoute>
+                      <TripDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trip/new"
+                  element={
+                    <ProtectedRoute>
+                      <TripCreatePage />
                     </ProtectedRoute>
                   }
                 />
