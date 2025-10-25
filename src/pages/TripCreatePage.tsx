@@ -156,7 +156,7 @@ const TripCreatePage: React.FC = () => {
   const BudgetStep = () => (
     <div>
       <Row gutter={16}>
-        <Col span={12}>
+        <Col span={24}>
           <Form.Item
             label="总预算"
             name="budget"
@@ -166,34 +166,20 @@ const TripCreatePage: React.FC = () => {
             ]}
           >
             <InputNumber
-              placeholder="预算金额"
+              placeholder="请输入总预算金额"
               min={100}
+              max={100000}
               step={100}
               style={{ width: '100%' }}
-              formatter={(value) => `¥ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => parseFloat(value!.replace(/¥\s?|(,*)/g, '')) as any}
+              addonBefore="¥"
             />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="预算范围"
-            name="budgetRange"
-            initialValue="中等"
-          >
-            <Select placeholder="选择预算范围">
-              <Option value="经济">经济（¥100-500/天）</Option>
-              <Option value="中等">中等（¥500-1000/天）</Option>
-              <Option value="舒适">舒适（¥1000-2000/天）</Option>
-              <Option value="豪华">豪华（¥2000+/天）</Option>
-            </Select>
           </Form.Item>
         </Col>
       </Row>
 
       <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '6px' }}>
         <Text type="secondary">
-          预算建议：根据您的出行天数和预算范围，系统将为您推荐合适的行程安排。
+          预算建议：根据您的出行天数和预算金额，系统将为您推荐合适的行程安排。
         </Text>
       </div>
     </div>
@@ -303,7 +289,6 @@ const TripCreatePage: React.FC = () => {
           initialValues={{
             duration: 3,
             travelers: 1,
-            budgetRange: '中等',
             travelStyle: '休闲'
           }}
         >

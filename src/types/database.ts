@@ -49,6 +49,7 @@ export interface Activity {
   location?: MapLocation
   type: 'TRANSPORT' | 'ACCOMMODATION' | 'FOOD' | 'SIGHTSEEING' | 'SHOPPING' | 'OTHER'
   cost?: number
+  notes?: string
 }
 
 export interface Expense {
@@ -64,6 +65,7 @@ export interface UserSettings {
   id: string
   user_id: string
   llm_api_key?: string
+  llm_model?: string
   voice_api_key?: string
   map_api_key?: string
   created_at: string
@@ -74,7 +76,7 @@ export interface UserSettings {
 export interface TripGenerationRequest {
   destination: string
   duration: number
-  budgetRange: string
+  budgetAmount: number
   travelStyle: string
   startDate?: string
   endDate?: string

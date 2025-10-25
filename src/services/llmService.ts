@@ -57,7 +57,12 @@ class LLMService {
         this.baseUrl = this.useProxy ? '/api/bailian/api/v1/services/aigc/text-generation/generation' : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
       }
       if (!config?.modelName) {
-        this.modelName = 'qwen-plus'
+        // 如果没有配置模型名称，使用环境变量中的默认值
+        let envModelName = ''
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+          envModelName = import.meta.env.VITE_LLM_MODEL || ''
+        }
+        this.modelName = envModelName || 'qwen-plus'
       }
     }
   }
@@ -96,11 +101,10 @@ class LLMService {
 
   // 生成模拟旅行计划（用于测试）
   private generateMockTripPlan(request: TripGenerationRequest): TripGenerationResponse {
-    const { destination, duration, budgetRange, travelStyle, travelers } = request
+    const { destination, duration, budgetAmount, travelStyle, travelers } = request
     
-    // 根据预算范围计算总预算
-    const baseBudget = budgetRange === 'budget' ? 2000 : budgetRange === 'comfort' ? 5000 : 10000
-    const totalBudget = baseBudget * duration * travelers
+    // 使用用户输入的预算金额作为总预算
+    const totalBudget = budgetAmount
     
     // 预算分解
     const budgetBreakdown = {
@@ -197,23 +201,33 @@ class LLMService {
 
   // 构建提示词
   private buildPrompt(request: TripGenerationRequest): string {
-    const { destination, duration, budgetRange, travelStyle, travelers, preferences, specialRequirements } = request
+    const { destination, duration, budgetAmount, travelStyle, travelers, preferences, specialRequirements, startDate, endDate } = request
 
-    return `你是一个专业的旅行规划师。请根据以下需求生成一个详细的旅行计划：
+    let dateInfo = ''
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      dateInfo = `旅行日期：${start.toLocaleDateString('zh-CN')} 至 ${end.toLocaleDateString('zh-CN')}`
+    }
+
+    return `你是一个专业的旅行规划师。请根据以下需求生成一个简洁实用的旅行计划：
 
 目的地：${destination}
 旅行天数：${duration}天
-预算范围：${budgetRange}
+预算金额：${budgetAmount}元
 旅行风格：${travelStyle}
 出行人数：${travelers}人
 个人偏好：${preferences.join('、')}
 特殊要求：${specialRequirements || '无'}
+${dateInfo}
 
 请生成一个结构化的旅行计划，包含以下内容：
 
 1. 行程概览（标题、总预算估算）
 2. 预算分解（交通、住宿、餐饮、景点、购物等）
 3. 每日详细计划（按天组织，包含时间、活动、地点、类型）
+
+${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日、周末等）优化行程安排。' : ''}
 
 请以JSON格式返回，结构如下：
 {
@@ -246,24 +260,30 @@ class LLMService {
             "lng": 经度
           },
           "type": "活动类型",
-          "cost": 费用
+          "cost": 费用,
+          "notes": "备注信息"
         }
       ]
     }
   ]
 }
 
-请确保：
-- 预算分配符合${budgetRange}预算范围
-- 活动安排符合${travelStyle}旅行风格
-- 包含${preferences.join('、')}相关活动
-- 考虑${specialRequirements || '无特殊要求'}
-- 地点信息尽可能准确
-- 时间安排合理，不要过于紧凑`
+重要要求：
+1. 费用标注：每个活动必须标注具体费用，免费活动cost设为0
+2. 预约要求：需要预约/购票/预定的活动在notes中标注
+3. 预算控制：总费用控制在${budgetAmount}元以内
+4. 风格匹配：活动安排符合${travelStyle}旅行风格
+5. 偏好满足：包含${preferences.join('、')}相关活动
+6. 时间合理：时间安排不要过于紧凑
+
+请简洁明了地生成计划，避免过多细节描述。`
   }
 
   // 调用LLM API
   private async callBailianAPI(prompt: string): Promise<any> {
+    console.log('调用LLM API，API类型:', this.apiType)
+    console.log('API Key:', this.apiKey ? this.apiKey.substring(0, 10) + '...' : '未配置')
+    
     if (this.apiType === 'openai') {
       return await this.callOpenAIAPI(prompt)
     } else {
@@ -369,6 +389,8 @@ class LLMService {
         result_format: 'text' // 要求返回文本格式，我们会手动解析JSON
       }
     }
+
+    console.log('阿里云API请求体:', JSON.stringify(requestBody, null, 2))
 
     console.log('发送阿里云百炼API请求到:', this.baseUrl)
     console.log('请求体:', JSON.stringify(requestBody, null, 2))
@@ -499,7 +521,8 @@ class LLMService {
         description: activity.description || '',
         location: activity.location || undefined,
         type: activity.type || 'OTHER',
-        cost: activity.cost || 0
+        cost: activity.cost || 0,
+        notes: activity.notes || ''
       }))
     }))
 
@@ -523,41 +546,142 @@ class LLMService {
 
   // 自然语言解析（用于语音输入）
   async parseNaturalLanguage(text: string): Promise<Partial<TripGenerationRequest>> {
-    const prompt = `请从以下文本中提取旅行规划的关键信息：
+    // 如果没有配置API Key，使用本地简单解析
+    if (!this.apiKey) {
+      console.log('未配置API Key，使用本地解析')
+      return this.parseNaturalLanguageLocally(text)
+    }
+
+    const prompt = `请从以下中文文本中提取旅行规划的关键信息：
 
 文本："${text}"
 
-请提取以下信息：
-- 目的地
-- 旅行天数
-- 预算范围（budget/comfort/luxury）
-- 旅行风格（relaxation/adventure/cultural/food/shopping/nature/sightseeing/business）
-- 同行人数
-- 个人偏好
+请仔细分析文本内容，提取以下信息：
+- 目的地：城市或景点名称
+- 旅行天数：数字，如"2天"提取为2
+- 预算金额：数字，如"预算3000"提取为3000
+- 旅行风格：根据描述判断，可选值：relaxation（休闲度假）、adventure（冒险探索）、cultural（文化体验）、food（美食之旅）、shopping（购物之旅）、nature（自然风光）、sightseeing（城市观光）、business（商务出行）
+- 同行人数：数字，如"我和女朋友"提取为2，"一个人"提取为1
+- 个人偏好：如"喜欢美食"、"打卡标志地点"等
+
+特别注意：
+- 如果提到"女朋友"、"男朋友"、"夫妻"等，人数通常为2
+- 如果提到"一个人"、"独自"，人数为1
+- 预算金额要提取具体数字
+- 旅行天数要提取具体数字
+- 个人偏好要提取为数组
 
 以JSON格式返回，结构如下：
 {
   "destination": "目的地",
   "duration": 天数,
-  "budgetRange": "预算范围",
+  "budgetAmount": 预算金额,
   "travelStyle": "旅行风格",
   "travelers": 人数,
   "preferences": ["偏好1", "偏好2"]
 }
 
-如果某个信息不存在，请使用null或空数组。预算范围可选值：budget（经济型）、comfort（舒适型）、luxury（豪华型）。旅行风格可选值：relaxation（休闲度假）、adventure（冒险探索）、cultural（文化体验）、food（美食之旅）、shopping（购物之旅）、nature（自然风光）、sightseeing（城市观光）、business（商务出行）。`
+如果某个信息不存在，请使用null或空数组。旅行风格可选值：relaxation（休闲度假）、adventure（冒险探索）、cultural（文化体验）、food（美食之旅）、shopping（购物之旅）、nature（自然风光）、sightseeing（城市观光）、business（商务出行）。
+
+示例：
+输入："我和女朋友想去上海玩2天，预算3000，喜欢美食，想要打卡一下上海的标志地点"
+输出：{"destination": "上海", "duration": 2, "budgetAmount": 3000, "travelStyle": "sightseeing", "travelers": 2, "preferences": ["美食", "打卡标志地点"]}`
 
     try {
+      console.log('开始解析自然语言输入:', text)
+      console.log('API Key已配置，调用大模型解析')
       const response = await this.callBailianAPI(prompt)
+      console.log('LLM解析响应:', response)
+      
       const jsonMatch = response.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0])
+        const parsedData = JSON.parse(jsonMatch[0])
+        console.log('解析后的数据:', parsedData)
+        return parsedData
+      } else {
+        console.warn('无法从响应中提取JSON数据，响应内容:', response)
       }
     } catch (error) {
       console.error('自然语言解析失败:', error)
+      console.log('使用本地解析作为备选方案')
+      return this.parseNaturalLanguageLocally(text)
     }
 
-    return {}
+    console.log('解析失败，使用本地解析')
+    return this.parseNaturalLanguageLocally(text)
+  }
+
+  // 本地简单解析器
+  private parseNaturalLanguageLocally(text: string): Partial<TripGenerationRequest> {
+    console.log('使用本地解析器解析:', text)
+    
+    const result: Partial<TripGenerationRequest> = {}
+    
+    // 提取目的地（常见城市名称）
+    const destinations = ['北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '重庆', '西安', '武汉', '苏州', '厦门', '青岛', '大连', '天津', '长沙', '郑州', '沈阳', '昆明', '哈尔滨']
+    for (const dest of destinations) {
+      if (text.includes(dest)) {
+        result.destination = dest
+        break
+      }
+    }
+    
+    // 提取天数
+    const dayMatch = text.match(/(\d+)\s*天/)
+    if (dayMatch) {
+      result.duration = parseInt(dayMatch[1])
+    }
+    
+    // 提取预算金额
+    const budgetMatch = text.match(/预算\s*(\d+)/) || text.match(/(\d+)\s*元/)
+    if (budgetMatch) {
+      result.budgetAmount = parseInt(budgetMatch[1])
+    }
+    
+    // 提取人数
+    if (text.includes('女朋友') || text.includes('男朋友') || text.includes('夫妻') || text.includes('情侣') || text.includes('我们')) {
+      result.travelers = 2
+    } else if (text.includes('一个人') || text.includes('独自') || text.includes('自己')) {
+      result.travelers = 1
+    }
+    
+    // 提取偏好
+    const preferences: string[] = []
+    if (text.includes('美食') || text.includes('吃') || text.includes('餐厅')) {
+      preferences.push('美食')
+    }
+    if (text.includes('打卡') || text.includes('标志') || text.includes('景点') || text.includes('观光')) {
+      preferences.push('打卡标志地点')
+    }
+    if (text.includes('购物') || text.includes('买')) {
+      preferences.push('购物')
+    }
+    if (text.includes('文化') || text.includes('历史') || text.includes('博物馆')) {
+      preferences.push('文化')
+    }
+    if (text.includes('自然') || text.includes('风景') || text.includes('公园')) {
+      preferences.push('自然风光')
+    }
+    
+    if (preferences.length > 0) {
+      result.preferences = preferences
+    }
+    
+    // 设置默认旅行风格
+    if (text.includes('美食')) {
+      result.travelStyle = 'food'
+    } else if (text.includes('购物')) {
+      result.travelStyle = 'shopping'
+    } else if (text.includes('文化') || text.includes('历史')) {
+      result.travelStyle = 'cultural'
+    } else if (text.includes('自然') || text.includes('风景')) {
+      result.travelStyle = 'nature'
+    } else {
+      result.travelStyle = 'sightseeing'
+    }
+    
+    console.log('本地解析结果:', result)
+    return result
   }
 }
 
