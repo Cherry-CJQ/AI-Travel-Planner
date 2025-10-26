@@ -32,7 +32,8 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 **位置**: `src/services/mapService.ts`
 
 **需要配置的项目**:
-- **高德地图API密钥**: 用于地图显示和地点搜索
+- **高德地图Web端(JS API)密钥**: 用于地图显示
+- **高德地图Web服务API密钥**: 用于地理编码和地点搜索
 
 **配置方法**:
 ```typescript

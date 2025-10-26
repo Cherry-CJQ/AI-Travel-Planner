@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import './TripPlanDisplay.css'
 import {
   Card,
   Timeline,
@@ -42,6 +43,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
 }) => {
   const { saveGeneratedTrip, loading } = useTripStore()
   const [activeTab, setActiveTab] = useState('details')
+  const [highlightedActivity, setHighlightedActivity] = useState<{dayIndex: number, activityIndex: number} | null>(null)
 
   const handleSave = async () => {
     try {
@@ -49,6 +51,37 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
       onSave?.()
     } catch (error) {
       console.error('保存行程失败:', error)
+    }
+  }
+
+  // 处理时间轴活动项点击
+  const handleActivityClick = (dayIndex: number, activityIndex: number) => {
+    setHighlightedActivity({ dayIndex, activityIndex })
+    // 切换到地图标签页
+    setActiveTab('map')
+  }
+
+  // 处理地图位置点击
+  const handleLocationClick = (location: any) => {
+    // 根据位置信息找到对应的活动项
+    const allActivities = plan.dailyPlan.flatMap((dayPlan, dayIndex) =>
+      dayPlan.activities.map((activity, activityIndex) => ({
+        ...activity,
+        dayIndex,
+        activityIndex
+      }))
+    )
+    
+    const matchedActivity = allActivities.find(activity =>
+      activity.location?.name === location.name ||
+      activity.name === location.name
+    )
+    
+    if (matchedActivity) {
+      setHighlightedActivity({
+        dayIndex: matchedActivity.dayIndex,
+        activityIndex: matchedActivity.activityIndex
+      })
     }
   }
 
@@ -138,20 +171,30 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
             </Divider>
             
             <Timeline>
-              {dayPlan.activities.map((activity, activityIndex) => (
-                <Timeline.Item
-                  key={activityIndex}
-                  dot={
-                    <span style={{ fontSize: '16px' }}>
-                      {getActivityIcon(activity.type)}
-                    </span>
-                  }
-                >
-                  <Card 
-                    size="small" 
-                    style={{ marginBottom: 8 }}
-                    bodyStyle={{ padding: '12px 16px' }}
+              {dayPlan.activities.map((activity, activityIndex) => {
+                const isHighlighted = highlightedActivity?.dayIndex === dayIndex &&
+                                    highlightedActivity?.activityIndex === activityIndex
+                
+                return (
+                  <Timeline.Item
+                    key={activityIndex}
+                    dot={
+                      <span style={{ fontSize: '16px' }}>
+                        {getActivityIcon(activity.type)}
+                      </span>
+                    }
                   >
+                    <Card
+                      size="small"
+                      style={{
+                        marginBottom: 8,
+                        border: isHighlighted ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                        boxShadow: isHighlighted ? '0 2px 8px rgba(24, 144, 255, 0.2)' : 'none'
+                      }}
+                      bodyStyle={{ padding: '12px 16px' }}
+                      onClick={() => handleActivityClick(dayIndex, activityIndex)}
+                      className={activity.location ? 'clickable-activity' : ''}
+                    >
                     <Row gutter={16} align="middle">
                       <Col span={3}>
                         <Text strong style={{ fontSize: '16px' }}>
@@ -192,9 +235,10 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
                         </Tag>
                       </Col>
                     </Row>
-                  </Card>
-                </Timeline.Item>
-              ))}
+                    </Card>
+                  </Timeline.Item>
+                )
+              })}
             </Timeline>
           </div>
         ))}
@@ -209,9 +253,8 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
         destination={plan.tripSummary.destination}
         activities={allActivities}
         height={500}
-        onLocationClick={(location) => {
-          console.log('点击位置:', location)
-        }}
+        onLocationClick={handleLocationClick}
+        highlightedActivity={highlightedActivity}
       />
       
       {/* 活动统计 */}

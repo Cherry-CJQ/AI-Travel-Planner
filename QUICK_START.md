@@ -60,8 +60,9 @@ git rm --cached .env
 
 ### 2. 高德地图配置（可选但推荐）
 1. 访问 [高德开放平台](https://lbs.amap.com/)
-2. 注册账号并创建应用
-3. 获取Key → `VITE_AMAP_API_KEY`
+2. 注册账号并创建两个应用：
+   - **Web端(JS API)** - 用于地图显示，获取Key → `VITE_AMAP_JS_API_KEY`
+   - **Web服务API** - 用于地理编码，获取Key → `VITE_AMAP_API_KEY`
 
 ### 3. 阿里云百炼配置（可选）
 1. 访问 [阿里云百炼](https://bailian.console.aliyun.com/)

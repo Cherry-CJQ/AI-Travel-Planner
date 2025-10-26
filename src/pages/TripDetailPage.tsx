@@ -22,6 +22,7 @@ import { Trip, DailyPlan, Expense } from '../types/database'
 import { dailyPlanService } from '../services/supabase'
 import { BudgetOverview } from '../components/Budget/BudgetOverview'
 import { ExpenseManager } from '../components/Budget/ExpenseManager'
+import { TripDetailMap } from '../components/Trip/TripDetailMap'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -35,6 +36,7 @@ const TripDetailPage: React.FC = () => {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([])
   const [activeTab, setActiveTab] = useState('overview')
+  const [selectedDay, setSelectedDay] = useState<number>(1)
 
   useEffect(() => {
     if (tripId) {
@@ -191,61 +193,128 @@ const TripDetailPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 标签页内容 */}
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab="行程概览" key="overview">
-          <Row gutter={16}>
-            <Col span={16}>
-              {/* 每日计划 */}
-              <Card title="每日行程安排" style={{ marginBottom: 16 }}>
-                {dailyPlans.length > 0 ? (
-                  dailyPlans.map((plan) => (
-                    <div key={plan.id} style={{ marginBottom: 24 }}>
-                      <Title level={4}>第 {plan.day_number} 天 - {plan.theme}</Title>
-                      <List
-                        dataSource={plan.activities}
-                        renderItem={(activity) => (
-                          <List.Item>
-                            <div style={{ width: '100%' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                  <Text strong>{activity.time}</Text>
-                                  <Text style={{ marginLeft: 8 }}>{activity.name}</Text>
-                                  <Tag 
-                                    color={getActivityTypeColor(activity.type)} 
-                                    style={{ marginLeft: 8 }}
-                                  >
-                                    {activity.type}
-                                  </Tag>
-                                </div>
+      {/* 主内容区域 - 行程信息与地图并排显示 */}
+      <Row gutter={16}>
+        {/* 左侧：行程信息 */}
+        <Col span={12}>
+          <Card title="行程信息" style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }}>
+              <Title level={4}>{trip.title}</Title>
+              <Text type="secondary">{trip.destination} · {trip.duration} 天行程</Text>
+            </div>
+            
+            {/* 天数选择器 */}
+            <div style={{ marginBottom: 16 }}>
+              <Space wrap>
+                {dailyPlans.map((plan) => (
+                  <Button
+                    key={plan.day_number}
+                    type={selectedDay === plan.day_number ? 'primary' : 'default'}
+                    size="small"
+                    onClick={() => setSelectedDay(plan.day_number)}
+                  >
+                    第{plan.day_number}天
+                  </Button>
+                ))}
+              </Space>
+            </div>
+
+            {/* 当前选中天数的行程安排 */}
+            {dailyPlans
+              .filter(plan => plan.day_number === selectedDay)
+              .map((plan) => (
+                <div key={plan.day_number}>
+                  <Title level={5} style={{ marginBottom: 16, color: '#1890ff' }}>
+                    {plan.theme}
+                  </Title>
+                  
+                  <List
+                    dataSource={plan.activities}
+                    renderItem={(activity) => (
+                      <List.Item
+                        style={{
+                          cursor: activity.location ? 'pointer' : 'default',
+                          padding: '12px 0',
+                          borderBottom: '1px solid #f0f0f0'
+                        }}
+                        onClick={() => {
+                          if (activity.location) {
+                            // 可以添加地图高亮逻辑
+                            message.info(`已定位到: ${activity.location.name}`)
+                          }
+                        }}
+                      >
+                        <div style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ marginBottom: 4 }}>
+                                <Text strong style={{ fontSize: '16px' }}>
+                                  {activity.time}
+                                </Text>
+                                <Text strong style={{ fontSize: '16px', marginLeft: 8 }}>
+                                  {activity.name}
+                                </Text>
                                 {activity.cost && (
-                                  <Text type="secondary">¥{activity.cost}</Text>
+                                  <Text style={{ marginLeft: 8, color: '#52c41a' }}>
+                                    ¥{activity.cost}
+                                  </Text>
                                 )}
                               </div>
-                              <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                              
+                              <Text type="secondary" style={{ fontSize: '14px', display: 'block' }}>
                                 {activity.description}
                               </Text>
+                              
+                              {activity.location && (
+                                <div style={{ marginTop: 4 }}>
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    📍 {activity.location.name}
+                                  </Text>
+                                </div>
+                              )}
                             </div>
-                          </List.Item>
-                        )}
-                      />
-                      {plan.day_number < dailyPlans.length && <Divider />}
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '20px' }}>
-                    <Text type="secondary">暂无行程安排</Text>
-                  </div>
-                )}
-              </Card>
-            </Col>
-            <Col span={8}>
-              {/* 预算概览 */}
-              <BudgetOverview tripId={tripId!} />
-            </Col>
-          </Row>
-        </TabPane>
+                            
+                            <div style={{ marginLeft: 16 }}>
+                              <Tag color={getActivityTypeColor(activity.type)}>
+                                {activity.type === 'TRANSPORT' && '交通'}
+                                {activity.type === 'ACCOMMODATION' && '住宿'}
+                                {activity.type === 'FOOD' && '餐饮'}
+                                {activity.type === 'SIGHTSEEING' && '观光'}
+                                {activity.type === 'SHOPPING' && '购物'}
+                                {activity.type === 'OTHER' && '其他'}
+                              </Tag>
+                            </div>
+                          </div>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                </div>
+              ))}
+            
+            {dailyPlans.filter(plan => plan.day_number === selectedDay).length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Text type="secondary">暂无第{selectedDay}天的行程安排</Text>
+              </div>
+            )}
+          </Card>
 
+          {/* 预算概览 */}
+          <BudgetOverview tripId={tripId!} />
+        </Col>
+
+        {/* 右侧：地图 */}
+        <Col span={12}>
+          <TripDetailMap
+            dailyPlans={dailyPlans}
+            selectedDay={selectedDay}
+            onMarkerClick={setSelectedDay}
+          />
+        </Col>
+      </Row>
+
+      {/* 其他功能标签页 */}
+      <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 24 }}>
         <TabPane tab="预算管理" key="budget">
           <Row gutter={16}>
             <Col span={8}>

@@ -11,6 +11,7 @@ interface TripMapProps {
   activities: Activity[]
   height?: number
   onLocationClick?: (location: MapLocation) => void
+  highlightedActivity?: { dayIndex: number; activityIndex: number } | null
 }
 
 declare global {
@@ -23,7 +24,8 @@ export const TripMap: React.FC<TripMapProps> = ({
   destination,
   activities,
   height = 400,
-  onLocationClick
+  onLocationClick,
+  highlightedActivity
 }) => {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -73,18 +75,30 @@ export const TripMap: React.FC<TripMapProps> = ({
         // 添加活动地点标记
         activityLocations.forEach((location, index) => {
           const activity = activities[index]
+          const isHighlighted = highlightedActivity ?
+                               (highlightedActivity.dayIndex === Math.floor(index / activities.length) &&
+                                highlightedActivity.activityIndex === index % activities.length) : false
+          
           addMarker(
             location,
             activity.name,
             getActivityColor(activity.type),
-            activity.description
+            activity.description,
+            isHighlighted
           )
         })
 
         // 自动调整地图视野
         if (activityLocations.length > 0) {
           const allLocations = [destinationLocation, ...activityLocations]
-          mapInstanceRef.current.setFitView(allLocations.map(loc => [loc.lng, loc.lat]))
+          if (allLocations.length > 0) {
+            // 使用更简单的方法设置地图视野
+            const bounds = new window.AMap.Bounds()
+            allLocations.forEach(loc => {
+              bounds.extend(new window.AMap.LngLat(loc.lng, loc.lat))
+            })
+            mapInstanceRef.current.setBounds(bounds)
+          }
         }
 
         setLoading(false)
@@ -115,7 +129,10 @@ export const TripMap: React.FC<TripMapProps> = ({
       }
 
       const script = document.createElement('script')
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${import.meta.env.VITE_AMAP_API_KEY || ''}&plugin=AMap.Geocoder`
+      // Web端(JS API)需要单独的Key，优先使用JS API专用Key，如果没有则使用通用Key
+      // Web端(JS API)有Key和Secret，但JS加载时只需要Key
+      const jsApiKey = import.meta.env.VITE_AMAP_JS_API_KEY || import.meta.env.VITE_AMAP_API_KEY || ''
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${jsApiKey}&plugin=AMap.Geocoder`
       script.async = true
       
       script.onload = () => resolve()
@@ -126,13 +143,22 @@ export const TripMap: React.FC<TripMapProps> = ({
   }
 
   // 添加标记点
-  const addMarker = (location: MapLocation, title: string, color: string, content?: string) => {
+  const addMarker = (location: MapLocation, title: string, color: string, content?: string, isHighlighted: boolean = false) => {
     if (!mapInstanceRef.current) return
 
     const marker = new window.AMap.Marker({
       position: [location.lng, location.lat],
       title: title,
-      offset: new window.AMap.Pixel(-13, -30)
+      offset: new window.AMap.Pixel(-13, -30),
+      zIndex: isHighlighted ? 100 : 10,
+      // 高亮标记的样式
+      ...(isHighlighted && {
+        icon: new window.AMap.Icon({
+          size: new window.AMap.Size(32, 32),
+          image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+          imageSize: new window.AMap.Size(32, 32)
+        })
+      })
     })
 
     // 创建信息窗口
@@ -189,6 +215,33 @@ export const TripMap: React.FC<TripMapProps> = ({
       initMap()
     }, 100)
   }
+
+  // 当高亮活动变化时，重新渲染标记
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.AMap) return
+    
+    // 清除所有标记
+    markersRef.current.forEach(marker => marker.setMap(null))
+    markersRef.current = []
+    
+    // 重新添加标记
+    if (locations.length > 0) {
+      locations.forEach((location, index) => {
+        const activity = activities[index]
+        const isHighlighted = highlightedActivity ?
+                             (highlightedActivity.dayIndex === Math.floor(index / activities.length) &&
+                              highlightedActivity.activityIndex === index % activities.length) : false
+        
+        addMarker(
+          location,
+          activity.name,
+          getActivityColor(activity.type),
+          activity.description,
+          isHighlighted
+        )
+      })
+    }
+  }, [highlightedActivity])
 
   if (error) {
     return (

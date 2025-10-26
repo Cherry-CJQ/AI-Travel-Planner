@@ -54,7 +54,8 @@ VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 
 # 高德地图配置（可选）
-VITE_AMAP_API_KEY=your-amap-api-key-here
+VITE_AMAP_JS_API_KEY=your-js-api-key-here
+VITE_AMAP_API_KEY=your-web-service-api-key-here
 
 # 阿里云配置（可选）
 VITE_ALIYUN_ACCESS_KEY_ID=your-access-key-id

@@ -1,0 +1,47 @@
+/* 可点击活动项的样式 */
+.clickable-activity {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clickable-activity:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #1890ff !important;
+}
+
+.clickable-activity::after {
+  content: "📍 点击查看位置";
+  display: block;
+  font-size: 12px;
+  color: #1890ff;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.clickable-activity:hover::after {
+  opacity: 1;
+}
+
+/* 高亮活动项的样式 */
+.highlighted-activity {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  }
+}
+
+/* 地图标记高亮样式 */
+.highlighted-marker {
+  z-index: 100 !important;
+}
