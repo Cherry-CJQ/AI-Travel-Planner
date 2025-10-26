@@ -106,6 +106,9 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
       if (parsedData.preferences && Array.isArray(parsedData.preferences)) {
         setPreferences(parsedData.preferences)
       }
+      if (parsedData.specialRequirements) {
+        form.setFieldValue('specialRequirements', parsedData.specialRequirements)
+      }
 
       // 切换到表单模式
       setInputMode('form')

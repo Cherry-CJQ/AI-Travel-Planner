@@ -1,5 +1,5 @@
 // LLM服务 - 阿里云百炼API集成
-import { TripGenerationRequest, TripGenerationResponse } from '../types/database'
+import { TripGenerationRequest, TripGenerationResponse, Activity } from '../types/database'
 
 class LLMService {
   private apiKey: string = ''
@@ -101,14 +101,20 @@ class LLMService {
 
   // 生成模拟旅行计划（用于测试）
   private generateMockTripPlan(request: TripGenerationRequest): TripGenerationResponse {
-    const { destination, duration, budgetAmount, travelStyle, travelers } = request
+    const { destination, duration, budgetAmount, travelStyle, travelers, specialRequirements } = request
+    
+    // 检查是否排除交通费用
+    const excludeFlights = specialRequirements?.includes('不包含机票') ||
+                          specialRequirements?.includes('不包含车票') ||
+                          specialRequirements?.includes('不包含来回路费') ||
+                          specialRequirements?.includes('不含交通费')
     
     // 使用用户输入的预算金额作为总预算
     const totalBudget = budgetAmount
     
-    // 预算分解
+    // 预算分解 - 根据是否排除交通费用调整分配
     const budgetBreakdown = {
-      flights: Math.round(totalBudget * 0.3),
+      flights: excludeFlights ? 0 : Math.round(totalBudget * 0.3),
       accommodation: Math.round(totalBudget * 0.25),
       food: Math.round(totalBudget * 0.2),
       transportation: Math.round(totalBudget * 0.1),
@@ -117,62 +123,95 @@ class LLMService {
       other: Math.round(totalBudget * 0.02)
     }
 
+    // 如果排除了交通费用，重新分配预算
+    if (excludeFlights) {
+      const remainingBudget = totalBudget - budgetBreakdown.flights
+      budgetBreakdown.accommodation = Math.round(remainingBudget * 0.3)
+      budgetBreakdown.food = Math.round(remainingBudget * 0.25)
+      budgetBreakdown.activities = Math.round(remainingBudget * 0.2)
+      budgetBreakdown.transportation = Math.round(remainingBudget * 0.15)
+      budgetBreakdown.shopping = Math.round(remainingBudget * 0.05)
+      budgetBreakdown.other = Math.round(remainingBudget * 0.05)
+    }
+
     // 生成每日计划
     const dailyPlan = []
     for (let day = 1; day <= duration; day++) {
       const themes = ['城市探索', '文化体验', '自然风光', '美食之旅', '休闲购物']
       const theme = themes[(day - 1) % themes.length]
       
-      const activities = [
+      // 第一天安排酒店入住
+      const isFirstDay = day === 1
+      
+      const activities: Activity[] = [
         {
           time: '09:00',
           name: '早餐',
-          description: '享用当地特色早餐',
+          description: `享用当地特色早餐（${30 * travelers}元/人）`,
           location: undefined,
-          type: 'FOOD' as const,
-          cost: 50
+          type: 'FOOD',
+          cost: 30 * travelers,
+          notes: ''
         },
         {
           time: '10:00',
           name: `${destination}主要景点参观`,
-          description: `探索${destination}的著名景点`,
+          description: `探索${destination}的著名景点（${80}元/人）`,
           location: undefined,
-          type: 'SIGHTSEEING' as const,
-          cost: 100
+          type: 'SIGHTSEEING',
+          cost: 80 * travelers,
+          notes: '需提前3天预约'
         },
         {
           time: '12:30',
           name: '午餐',
-          description: '品尝当地美食',
+          description: `品尝当地美食（${60}元/人）`,
           location: undefined,
-          type: 'FOOD' as const,
-          cost: 80
+          type: 'FOOD',
+          cost: 60 * travelers,
+          notes: ''
         },
         {
           time: '14:00',
           name: `${theme}活动`,
-          description: `参与${theme}相关的特色活动`,
+          description: `参与${theme}相关的特色活动（${50}元/人）`,
           location: undefined,
-          type: 'SIGHTSEEING' as const,
-          cost: 150
+          type: 'SIGHTSEEING',
+          cost: 50 * travelers,
+          notes: day === 2 ? '需提前1天预约' : ''
         },
         {
           time: '18:00',
           name: '晚餐',
-          description: '享受丰盛的晚餐',
+          description: `享受丰盛的晚餐（${80}元/人）`,
           location: undefined,
-          type: 'FOOD' as const,
-          cost: 120
+          type: 'FOOD',
+          cost: 80 * travelers,
+          notes: ''
         },
         {
           time: '20:00',
           name: '夜游',
           description: '欣赏城市夜景',
           location: undefined,
-          type: 'SIGHTSEEING' as const,
-          cost: 60
+          type: 'SIGHTSEEING',
+          cost: 0,
+          notes: '免费活动'
         }
       ]
+
+      // 第一天添加酒店入住活动
+      if (isFirstDay) {
+        activities.unshift({
+          time: '14:00',
+          name: '酒店入住',
+          description: `办理酒店入住手续（住宿费用已包含在总预算中）`,
+          location: undefined,
+          type: 'ACCOMMODATION',
+          cost: 0,
+          notes: '酒店费用已计入总预算'
+        })
+      }
 
       dailyPlan.push({
         day,
@@ -210,24 +249,22 @@ class LLMService {
       dateInfo = `旅行日期：${start.toLocaleDateString('zh-CN')} 至 ${end.toLocaleDateString('zh-CN')}`
     }
 
-    return `你是一个专业的旅行规划师。请根据以下需求生成一个简洁实用的旅行计划：
+    // 检查特殊要求中是否包含预算排除项
+    const excludeFlights = specialRequirements?.includes('不包含机票') ||
+                          specialRequirements?.includes('不包含车票') ||
+                          specialRequirements?.includes('不包含来回路费') ||
+                          specialRequirements?.includes('不含交通费')
+
+    return `你是一个专业的旅行规划师。请根据以下需求生成旅行计划：
 
 目的地：${destination}
-旅行天数：${duration}天
-预算金额：${budgetAmount}元
-旅行风格：${travelStyle}
-出行人数：${travelers}人
-个人偏好：${preferences.join('、')}
+天数：${duration}天
+预算：${budgetAmount}元
+风格：${travelStyle}
+人数：${travelers}人
+偏好：${preferences.join('、')}
 特殊要求：${specialRequirements || '无'}
 ${dateInfo}
-
-请生成一个结构化的旅行计划，包含以下内容：
-
-1. 行程概览（标题、总预算估算）
-2. 预算分解（交通、住宿、餐饮、景点、购物等）
-3. 每日详细计划（按天组织，包含时间、活动、地点、类型）
-
-${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日、周末等）优化行程安排。' : ''}
 
 请以JSON格式返回，结构如下：
 {
@@ -255,10 +292,6 @@ ${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日
           "time": "时间",
           "name": "活动名称",
           "description": "活动描述",
-          "location": {
-            "lat": 纬度,
-            "lng": 经度
-          },
           "type": "活动类型",
           "cost": 费用,
           "notes": "备注信息"
@@ -269,14 +302,14 @@ ${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日
 }
 
 重要要求：
-1. 费用标注：每个活动必须标注具体费用，免费活动cost设为0
-2. 预约要求：需要预约/购票/预定的活动在notes中标注
+1. 费用计算：按人计算的费用在description中标注"xx元/人"，cost字段计算总费用（单价 × ${travelers}人），免费的地方cost标注为："免费！"
+2. 预约要求：需要预约的景点在notes中标注"需提前XX天预约"
 3. 预算控制：总费用控制在${budgetAmount}元以内
-4. 风格匹配：活动安排符合${travelStyle}旅行风格
-5. 偏好满足：包含${preferences.join('、')}相关活动
-6. 时间合理：时间安排不要过于紧凑
-
-请简洁明了地生成计划，避免过多细节描述。`
+4. 酒店安排：只在第一天安排酒店入住，住宿费用计入总预算
+5. 交通费用：${excludeFlights ? '预算不包含来回路费，flights预算项为0' : '合理估算机票/车票费用'}
+6. 风格偏好：活动安排符合${travelStyle}风格，包含${preferences.join('、')}相关活动
+7. 行程优化：每天的活动安排要地理位置相近，减少交通时间，提高游览效率
+8. 天数优先级：如果旅行天数和开始-结束日期计算出来的天数有矛盾，应以旅行天数（${duration}天）为准`
   }
 
   // 调用LLM API
@@ -552,40 +585,51 @@ ${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日
       return this.parseNaturalLanguageLocally(text)
     }
 
-    const prompt = `请从以下中文文本中提取旅行规划的关键信息：
+    const prompt = `你是一个专业的旅行规划助手。请从用户输入中提取旅行规划的关键信息。
 
-文本："${text}"
+用户输入："${text}"
 
-请仔细分析文本内容，提取以下信息：
-- 目的地：城市或景点名称
-- 旅行天数：数字，如"2天"提取为2
-- 预算金额：数字，如"预算3000"提取为3000
-- 旅行风格：根据描述判断，可选值：relaxation（休闲度假）、adventure（冒险探索）、cultural（文化体验）、food（美食之旅）、shopping（购物之旅）、nature（自然风光）、sightseeing（城市观光）、business（商务出行）
-- 同行人数：数字，如"我和女朋友"提取为2，"一个人"提取为1
-- 个人偏好：如"喜欢美食"、"打卡标志地点"等
+请仔细分析用户输入，提取以下信息：
+1. 目的地：用户想去哪里
+2. 旅行天数：数字形式的天数
+3. 预算金额：数字形式的预算
+4. 旅行风格：根据描述判断（休闲度假/冒险探索/文化体验/美食之旅/购物之旅/自然风光/城市观光/商务出行）
+5. 同行人数：数字形式的人数
+6. 个人偏好：用户提到的喜好和需求，提取为数组
+7. 特殊需求：特别注意用户是否提到预算不包含交通费用
 
-特别注意：
-- 如果提到"女朋友"、"男朋友"、"夫妻"等，人数通常为2
-- 如果提到"一个人"、"独自"，人数为1
-- 预算金额要提取具体数字
-- 旅行天数要提取具体数字
-- 个人偏好要提取为数组
+重要提示：
+- 交通费用排除识别：如果用户提到预算不包含任何形式的交通费用，包括但不限于以下表述：
+  "不含来回路费"、"不包含来回路费"、"不含车票"、"不包含车票"、"不含机票"、"不包含机票"、"不含交通费"、"不包含交通费"、"不含路费"、"不包含路费"、"不含交通"、"不包含交通"
+  请在specialRequirements中记录"预算不包含来回路费"
+- 个人偏好要完整提取用户的需求，如"喜欢吃辣的但是不要过分辣"提取为["喜欢吃辣但不要过分辣"]
+- 用户明确要求必须去的地点也要记录在preferences中
+- 旅行风格使用中文
 
-以JSON格式返回，结构如下：
+请以JSON格式返回结果：
 {
   "destination": "目的地",
   "duration": 天数,
   "budgetAmount": 预算金额,
   "travelStyle": "旅行风格",
   "travelers": 人数,
-  "preferences": ["偏好1", "偏好2"]
+  "preferences": ["偏好1", "偏好2"],
+  "specialRequirements": "特殊需求"
 }
 
-如果某个信息不存在，请使用null或空数组。旅行风格可选值：relaxation（休闲度假）、adventure（冒险探索）、cultural（文化体验）、food（美食之旅）、shopping（购物之旅）、nature（自然风光）、sightseeing（城市观光）、business（商务出行）。
+示例1：
+输入："我和女朋友要去上海玩两天，预算3000元（不含来回路费），不要超过，想打卡网红打卡点，品尝一下上海的美食"
+输出：{"destination": "上海", "duration": 2, "budgetAmount": 3000, "travelStyle": "城市观光", "travelers": 2, "preferences": ["打卡网红打卡点", "品尝上海美食"], "specialRequirements": "预算不包含来回路费"}
 
-示例：
-输入："我和女朋友想去上海玩2天，预算3000，喜欢美食，想要打卡一下上海的标志地点"
-输出：{"destination": "上海", "duration": 2, "budgetAmount": 3000, "travelStyle": "sightseeing", "travelers": 2, "preferences": ["美食", "打卡标志地点"]}`
+示例2：
+输入："我最近想出去玩几天，预算2000块钱吧（不包含来回车票/机票），去长沙玩三天两夜，我喜欢吃辣的但是不要过分辣，必须去毛主席雕塑那，其他地方随便安排"
+输出：{"destination": "长沙", "duration": 3, "budgetAmount": 2000, "travelStyle": "城市观光", "travelers": 1, "preferences": ["喜欢吃辣但不要过分辣", "毛主席雕塑"], "specialRequirements": "预算不包含来回路费"}
+
+示例3：
+输入："一个人去北京玩3天，预算1500，不含交通费，喜欢历史"
+输出：{"destination": "北京", "duration": 3, "budgetAmount": 1500, "travelStyle": "文化体验", "travelers": 1, "preferences": ["历史"], "specialRequirements": "预算不包含来回路费"}
+
+如果某个信息不存在，请使用null或空字符串。`
 
     try {
       console.log('开始解析自然语言输入:', text)
@@ -667,17 +711,34 @@ ${startDate && endDate ? '请根据旅行日期特点（如节假日、工作日
       result.preferences = preferences
     }
     
-    // 设置默认旅行风格
+    // 设置默认旅行风格（使用中文）
     if (text.includes('美食')) {
-      result.travelStyle = 'food'
+      result.travelStyle = '美食之旅'
     } else if (text.includes('购物')) {
-      result.travelStyle = 'shopping'
+      result.travelStyle = '购物之旅'
     } else if (text.includes('文化') || text.includes('历史')) {
-      result.travelStyle = 'cultural'
+      result.travelStyle = '文化体验'
     } else if (text.includes('自然') || text.includes('风景')) {
-      result.travelStyle = 'nature'
+      result.travelStyle = '自然风光'
     } else {
-      result.travelStyle = 'sightseeing'
+      result.travelStyle = '城市观光'
+    }
+    
+    // 检查是否包含交通费用排除需求
+    if (text.includes('不包含来回车票') ||
+        text.includes('不包含来回机票') ||
+        text.includes('不含来回路费') ||
+        text.includes('不含来回车票') ||
+        text.includes('不含来回机票') ||
+        text.includes('不包含车票') ||
+        text.includes('不包含机票') ||
+        text.includes('不包含路费') ||
+        text.includes('不包含交通费') ||
+        text.includes('不含交通') ||
+        text.includes('不含车票') ||
+        text.includes('不含机票') ||
+        text.includes('不含路费')) {
+      result.specialRequirements = '预算不包含来回路费'
     }
     
     console.log('本地解析结果:', result)
