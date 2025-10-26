@@ -194,9 +194,9 @@ const TripDetailPage: React.FC = () => {
       </Row>
 
       {/* 主内容区域 - 行程信息与地图并排显示 */}
-      <Row gutter={16}>
-        {/* 左侧：行程信息 */}
-        <Col span={12}>
+      <Row gutter={24}>
+        {/* 左侧：行程信息 - 主要信息区域 */}
+        <Col span={16}>
           <Card title="行程信息" style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 16 }}>
               <Title level={4}>{trip.title}</Title>
@@ -303,8 +303,8 @@ const TripDetailPage: React.FC = () => {
           <BudgetOverview tripId={tripId!} />
         </Col>
 
-        {/* 右侧：地图 */}
-        <Col span={12}>
+        {/* 右侧：地图 - 辅助信息区域 */}
+        <Col span={8}>
           <TripDetailMap
             dailyPlans={dailyPlans}
             selectedDay={selectedDay}

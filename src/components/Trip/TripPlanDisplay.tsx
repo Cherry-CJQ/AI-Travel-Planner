@@ -11,24 +11,20 @@ import {
   Space,
   Divider,
   Typography,
-  Progress,
-  Tabs
+  Progress
 } from 'antd'
 import {
   EnvironmentOutlined,
   ClockCircleOutlined,
   DollarOutlined,
   SaveOutlined,
-  ShareAltOutlined,
-  CompassOutlined,
-  UnorderedListOutlined
+  ShareAltOutlined
 } from '@ant-design/icons'
 import { TripGenerationResponse } from '../../types/database'
 import { useTripStore } from '../../stores/tripStore'
 import { TripMap } from '../Map/TripMap'
 
 const { Title, Text, Paragraph } = Typography
-const { TabPane } = Tabs
 
 interface TripPlanDisplayProps {
   plan: TripGenerationResponse
@@ -42,7 +38,6 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
   onShare
 }) => {
   const { saveGeneratedTrip, loading } = useTripStore()
-  const [activeTab, setActiveTab] = useState('details')
   const [highlightedActivity, setHighlightedActivity] = useState<{dayIndex: number, activityIndex: number} | null>(null)
 
   const handleSave = async () => {
@@ -57,8 +52,6 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
   // 处理时间轴活动项点击
   const handleActivityClick = (dayIndex: number, activityIndex: number) => {
     setHighlightedActivity({ dayIndex, activityIndex })
-    // 切换到地图标签页
-    setActiveTab('map')
   }
 
   // 处理地图位置点击
@@ -325,33 +318,18 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
         </Row>
       </Card>
 
-      {/* 标签页 */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          {
-            key: 'details',
-            label: (
-              <span>
-                <UnorderedListOutlined />
-                行程详情
-              </span>
-            ),
-            children: detailsContent
-          },
-          {
-            key: 'map',
-            label: (
-              <span>
-                <CompassOutlined />
-                行程地图
-              </span>
-            ),
-            children: mapContent
-          }
-        ]}
-      />
+      {/* 主内容区域 - 行程信息与地图并排显示 */}
+      <Row gutter={24}>
+        {/* 左侧：行程详情 - 主要信息区域 */}
+        <Col span={16}>
+          {detailsContent}
+        </Col>
+        
+        {/* 右侧：行程地图 - 辅助信息区域 */}
+        <Col span={8}>
+          {mapContent}
+        </Col>
+      </Row>
 
       {/* 操作按钮 */}
       <div style={{ textAlign: 'center', marginTop: 24 }}>
