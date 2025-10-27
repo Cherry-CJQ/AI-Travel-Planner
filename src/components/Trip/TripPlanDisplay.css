@@ -1,47 +1,85 @@
-/* 可点击活动项的样式 */
+/* 可点击的活动卡片样式 */
 .clickable-activity {
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease-in-out;
 }
 
 .clickable-activity:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #1890ff !important;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+  transform: translateY(-1px);
 }
 
-.clickable-activity::after {
-  content: "📍 点击查看位置";
-  display: block;
-  font-size: 12px;
-  color: #1890ff;
-  margin-top: 8px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* 可调节分隔条样式 */
+.resizable-divider {
+  background-color: #f0f0f0;
+  transition: background-color 0.2s;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
-.clickable-activity:hover::after {
-  opacity: 1;
+.resizable-divider:hover {
+  background-color: #1890ff;
 }
 
-/* 高亮活动项的样式 */
+.resizable-divider::before {
+  content: '';
+  width: 2px;
+  height: 40px;
+  background-color: #d9d9d9;
+  border-radius: 1px;
+}
+
+.resizable-divider:hover::before {
+  background-color: #fff;
+}
+
+/* 高亮活动样式 */
 .highlighted-activity {
-  animation: pulse 2s infinite;
+  border: 2px solid #1890ff !important;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2) !important;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.4);
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .resizable-divider {
+    display: none;
   }
-  70% {
-    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
+  
+  .trip-plan-container {
+    flex-direction: column !important;
+    height: auto !important;
   }
-  100% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  
+  .trip-plan-left-panel,
+  .trip-plan-right-panel {
+    width: 100% !important;
+    padding: 0 !important;
+    margin-bottom: 16px;
   }
 }
 
-/* 地图标记高亮样式 */
-.highlighted-marker {
-  z-index: 100 !important;
+/* 滚动条样式 */
+.trip-plan-left-panel::-webkit-scrollbar,
+.trip-plan-right-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.trip-plan-left-panel::-webkit-scrollbar-track,
+.trip-plan-right-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.trip-plan-left-panel::-webkit-scrollbar-thumb,
+.trip-plan-right-panel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.trip-plan-left-panel::-webkit-scrollbar-thumb:hover,
+.trip-plan-right-panel::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

@@ -43,6 +43,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
   const { saveGeneratedTrip, loading } = useTripStore()
   const [highlightedActivity, setHighlightedActivity] = useState<{dayIndex: number, activityIndex: number} | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(66) // 默认左侧占66%
 
   const handleSave = async () => {
     try {
@@ -401,17 +402,67 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
       </Card>
 
       {/* 主内容区域 - 行程信息与地图并排显示 */}
-      <Row gutter={24}>
+      <div className="trip-plan-container" style={{ display: 'flex', height: 'calc(100vh - 200px)', position: 'relative' }}>
         {/* 左侧：行程详情 - 主要信息区域 */}
-        <Col span={16}>
+        <div
+          className="trip-plan-left-panel"
+          style={{
+            width: `${leftPanelWidth}%`,
+            height: '100%',
+            overflow: 'auto',
+            paddingRight: '8px'
+          }}
+        >
           {detailsContent}
-        </Col>
+        </div>
+        
+        {/* 可调节宽度的分隔条 */}
+        <div
+          className="resizable-divider"
+          style={{
+            width: '8px',
+            height: '100%',
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            const startX = e.clientX
+            const startWidth = leftPanelWidth
+            
+            const handleMouseMove = (moveEvent: MouseEvent) => {
+              const containerWidth = (e.target as HTMLElement).parentElement?.offsetWidth || 1200
+              const deltaX = moveEvent.clientX - startX
+              const deltaPercent = (deltaX / containerWidth) * 100
+              const newWidth = Math.max(30, Math.min(80, startWidth + deltaPercent))
+              setLeftPanelWidth(newWidth)
+            }
+            
+            const handleMouseUp = () => {
+              document.removeEventListener('mousemove', handleMouseMove)
+              document.removeEventListener('mouseup', handleMouseUp)
+              document.body.style.cursor = ''
+              document.body.style.userSelect = ''
+            }
+            
+            document.addEventListener('mousemove', handleMouseMove)
+            document.addEventListener('mouseup', handleMouseUp)
+            document.body.style.cursor = 'col-resize'
+            document.body.style.userSelect = 'none'
+          }}
+        />
         
         {/* 右侧：行程地图 - 辅助信息区域 */}
-        <Col span={8}>
+        <div
+          className="trip-plan-right-panel"
+          style={{
+            width: `${100 - leftPanelWidth}%`,
+            height: '100%',
+            overflow: 'auto',
+            paddingLeft: '8px'
+          }}
+        >
           {mapContent}
-        </Col>
-      </Row>
+        </div>
+      </div>
 
       {/* 操作按钮 */}
       <div style={{ textAlign: 'center', marginTop: 24 }}>

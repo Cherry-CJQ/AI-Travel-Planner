@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Layout, ConfigProvider, App as AntdApp } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
@@ -19,6 +19,8 @@ import RegisterPage from './pages/RegisterPage'
 const { Content } = Layout
 
 const App: React.FC = () => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
   return (
     <ConfigProvider
       locale={zhCN}
@@ -52,7 +54,10 @@ const App: React.FC = () => {
             <Layout style={{ minHeight: '100vh' }}>
               <Header />
               <Layout>
-                <Sidebar />
+                <Sidebar
+                  collapsed={sidebarCollapsed}
+                  onCollapse={setSidebarCollapsed}
+                />
                 <Layout style={{ padding: '24px', paddingBottom: '80px' }} className="mobile-padding-sm">
                   <Content
                     style={{

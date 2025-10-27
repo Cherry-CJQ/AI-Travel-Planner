@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  Typography, 
-  Card, 
-  Button, 
-  Space, 
-  Tabs, 
-  List, 
-  Tag, 
-  Statistic, 
-  Row, 
+import {
+  Typography,
+  Card,
+  Button,
+  Space,
+  Tabs,
+  List,
+  Tag,
+  Statistic,
+  Row,
   Col,
   Spin,
   message,
@@ -38,6 +38,7 @@ const TripDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedDay, setSelectedDay] = useState<number>(1)
   const [highlightedActivity, setHighlightedActivity] = useState<{ dayNumber: number; activityIndex: number } | null>(null)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(66) // 默认左侧占66%
 
   useEffect(() => {
     if (tripId) {
@@ -195,9 +196,17 @@ const TripDetailPage: React.FC = () => {
       </Row>
 
       {/* 主内容区域 - 行程信息与地图并排显示 */}
-      <Row gutter={24}>
+      <div className="trip-plan-container" style={{ display: 'flex', height: 'calc(100vh - 300px)', position: 'relative' }}>
         {/* 左侧：行程信息 - 主要信息区域 */}
-        <Col span={16}>
+        <div
+          className="trip-plan-left-panel"
+          style={{
+            width: `${leftPanelWidth}%`,
+            height: '100%',
+            overflow: 'auto',
+            paddingRight: '8px'
+          }}
+        >
           <Card title="行程信息" style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 16 }}>
               <Title level={4}>{trip.title}</Title>
@@ -313,10 +322,52 @@ const TripDetailPage: React.FC = () => {
 
           {/* 预算概览 */}
           <BudgetOverview tripId={tripId!} />
-        </Col>
-
+        </div>
+        
+        {/* 可调节宽度的分隔条 */}
+        <div
+          className="resizable-divider"
+          style={{
+            width: '8px',
+            height: '100%',
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            const startX = e.clientX
+            const startWidth = leftPanelWidth
+            
+            const handleMouseMove = (moveEvent: MouseEvent) => {
+              const containerWidth = (e.target as HTMLElement).parentElement?.offsetWidth || 1200
+              const deltaX = moveEvent.clientX - startX
+              const deltaPercent = (deltaX / containerWidth) * 100
+              const newWidth = Math.max(30, Math.min(80, startWidth + deltaPercent))
+              setLeftPanelWidth(newWidth)
+            }
+            
+            const handleMouseUp = () => {
+              document.removeEventListener('mousemove', handleMouseMove)
+              document.removeEventListener('mouseup', handleMouseUp)
+              document.body.style.cursor = ''
+              document.body.style.userSelect = ''
+            }
+            
+            document.addEventListener('mousemove', handleMouseMove)
+            document.addEventListener('mouseup', handleMouseUp)
+            document.body.style.cursor = 'col-resize'
+            document.body.style.userSelect = 'none'
+          }}
+        />
+        
         {/* 右侧：地图 - 辅助信息区域 */}
-        <Col span={8}>
+        <div
+          className="trip-plan-right-panel"
+          style={{
+            width: `${100 - leftPanelWidth}%`,
+            height: '100%',
+            overflow: 'auto',
+            paddingLeft: '8px'
+          }}
+        >
           <TripDetailMap
             dailyPlans={dailyPlans}
             selectedDay={selectedDay}
@@ -324,8 +375,8 @@ const TripDetailPage: React.FC = () => {
             onMarkerClick={setSelectedDay}
             highlightedActivity={highlightedActivity}
           />
-        </Col>
-      </Row>
+        </div>
+      </div>
 
       {/* 其他功能标签页 */}
       <Tabs activeKey={activeTab} onChange={setActiveTab} style={{ marginTop: 24 }}>
