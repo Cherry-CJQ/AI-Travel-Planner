@@ -143,12 +143,73 @@ class LLMService {
       // 第一天安排酒店入住
       const isFirstDay = day === 1
       
+      // 根据目的地生成具体的位置信息
+      const getLocationInfo = (activityName: string, activityType: string) => {
+        const commonLocations: Record<string, Record<string, string>> = {
+          '北京': {
+            '早餐': '王府井小吃街',
+            '主要景点参观': '故宫博物院',
+            '午餐': '全聚德烤鸭店',
+            '文化体验活动': '天坛公园',
+            '自然风光活动': '颐和园',
+            '美食之旅活动': '簋街',
+            '休闲购物活动': '三里屯太古里',
+            '晚餐': '后海酒吧街',
+            '夜游': '天安门广场'
+          },
+          '上海': {
+            '早餐': '城隍庙小吃广场',
+            '主要景点参观': '外滩',
+            '午餐': '南京路步行街',
+            '文化体验活动': '上海博物馆',
+            '自然风光活动': '豫园',
+            '美食之旅活动': '田子坊',
+            '休闲购物活动': '陆家嘴',
+            '晚餐': '新天地',
+            '夜游': '东方明珠'
+          },
+          '南京': {
+            '早餐': '夫子庙美食街',
+            '主要景点参观': '中山陵',
+            '午餐': '老门东',
+            '文化体验活动': '南京博物院',
+            '自然风光活动': '玄武湖公园',
+            '美食之旅活动': '狮子桥美食街',
+            '休闲购物活动': '新街口',
+            '晚餐': '1912街区',
+            '夜游': '秦淮河'
+          },
+          '杭州': {
+            '早餐': '河坊街',
+            '主要景点参观': '西湖',
+            '午餐': '楼外楼',
+            '文化体验活动': '灵隐寺',
+            '自然风光活动': '西溪湿地',
+            '美食之旅活动': '南宋御街',
+            '休闲购物活动': '湖滨银泰',
+            '晚餐': '武林夜市',
+            '夜游': '断桥残雪'
+          }
+        }
+
+        const cityLocations = commonLocations[destination] || commonLocations['北京']
+        const locationName = cityLocations[activityName] || `${destination}${activityName}`
+        
+        // 返回完整的MapLocation对象，lat和lng设为0，由地图服务自动获取
+        return {
+          lat: 0, // 地图服务会自动获取正确的坐标
+          lng: 0, // 地图服务会自动获取正确的坐标
+          name: locationName,
+          address: `${destination}市${locationName}`
+        }
+      }
+
       const activities: Activity[] = [
         {
           time: '09:00',
           name: '早餐',
           description: `享用当地特色早餐（${30 * travelers}元/人）`,
-          location: undefined,
+          location: getLocationInfo('早餐', 'FOOD'),
           type: 'FOOD',
           cost: 30 * travelers,
           notes: ''
@@ -157,7 +218,7 @@ class LLMService {
           time: '10:00',
           name: `${destination}主要景点参观`,
           description: `探索${destination}的著名景点（${80}元/人）`,
-          location: undefined,
+          location: getLocationInfo('主要景点参观', 'SIGHTSEEING'),
           type: 'SIGHTSEEING',
           cost: 80 * travelers,
           notes: '需提前3天预约'
@@ -166,7 +227,7 @@ class LLMService {
           time: '12:30',
           name: '午餐',
           description: `品尝当地美食（${60}元/人）`,
-          location: undefined,
+          location: getLocationInfo('午餐', 'FOOD'),
           type: 'FOOD',
           cost: 60 * travelers,
           notes: ''
@@ -175,7 +236,7 @@ class LLMService {
           time: '14:00',
           name: `${theme}活动`,
           description: `参与${theme}相关的特色活动（${50}元/人）`,
-          location: undefined,
+          location: getLocationInfo(`${theme}活动`, 'SIGHTSEEING'),
           type: 'SIGHTSEEING',
           cost: 50 * travelers,
           notes: day === 2 ? '需提前1天预约' : ''
@@ -184,7 +245,7 @@ class LLMService {
           time: '18:00',
           name: '晚餐',
           description: `享受丰盛的晚餐（${80}元/人）`,
-          location: undefined,
+          location: getLocationInfo('晚餐', 'FOOD'),
           type: 'FOOD',
           cost: 80 * travelers,
           notes: ''
@@ -193,7 +254,7 @@ class LLMService {
           time: '20:00',
           name: '夜游',
           description: '欣赏城市夜景',
-          location: undefined,
+          location: getLocationInfo('夜游', 'SIGHTSEEING'),
           type: 'SIGHTSEEING',
           cost: 0,
           notes: '免费活动'
@@ -292,6 +353,10 @@ ${dateInfo}
           "time": "时间",
           "name": "活动名称",
           "description": "活动描述",
+          "location": {
+            "name": "具体位置名称（必须准确）",
+            "address": "详细地址（可选）"
+          },
           "type": "活动类型",
           "cost": 费用,
           "notes": "备注信息"
@@ -302,14 +367,16 @@ ${dateInfo}
 }
 
 重要要求：
-1. 费用计算：按人计算的费用在description中标注"xx元/人"，cost字段计算总费用（单价 × ${travelers}人），免费的地方cost标注为："免费！"
-2. 预约要求：需要预约的景点在notes中标注"需提前XX天预约"
+1. 费用计算：按人计算的费用在description中标注"xx元/人"，cost字段计算总费用（单价 × ${travelers}人），免费的地方cost标注为："免费！"，免费景点要仔细搜索需不需要提前预约！！！
+2. 预约要求：需要预约的景点在notes中标注"需提前XX天预约"，景点位置信息、预约提醒必须准确！
 3. 预算控制：总费用控制在${budgetAmount}元以内
-4. 酒店安排：只在第一天安排酒店入住，住宿费用计入总预算
+4. 酒店安排：只在第一天安排酒店入住，住宿费用计入总预算，你需要推荐具体酒店名称（位置）和价格，必须准确！
 5. 交通费用：${excludeFlights ? '预算不包含来回路费，flights预算项为0' : '合理估算机票/车票费用'}
 6. 风格偏好：活动安排符合${travelStyle}风格，包含${preferences.join('、')}相关活动
-7. 行程优化：每天的活动安排要地理位置相近，减少交通时间，提高游览效率
-8. 天数优先级：如果旅行天数和开始-结束日期计算出来的天数有矛盾，应以旅行天数（${duration}天）为准`
+7. 行程优化：每天的活动安排要地理位置相近，减少交通时间，提高游览效率，每一场活动位置信息要尽可能详细准确！
+8. 位置信息要求：每个活动必须包含location字段，name字段必须是具体、准确的地点名称（如"故宫博物院"、"外滩"、"西湖"等），不要使用模糊描述
+9. 地图兼容性：位置名称必须能被高德地图API正确识别，建议使用官方景点名称或知名地标
+10. 天数优先级：如果旅行天数和开始-结束日期计算出来的天数有矛盾，应以旅行天数（${duration}天）为准`
   }
 
   // 调用LLM API

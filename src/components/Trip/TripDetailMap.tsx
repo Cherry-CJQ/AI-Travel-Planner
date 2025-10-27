@@ -9,7 +9,9 @@ const { Title, Text } = Typography
 interface TripDetailMapProps {
   dailyPlans: DailyPlan[]
   selectedDay: number
+  destination?: string
   onMarkerClick?: (dayNumber: number) => void
+  highlightedActivity?: { dayNumber: number; activityIndex: number } | null
 }
 
 declare global {
@@ -21,7 +23,9 @@ declare global {
 export const TripDetailMap: React.FC<TripDetailMapProps> = ({
   dailyPlans,
   selectedDay,
-  onMarkerClick
+  destination,
+  onMarkerClick,
+  highlightedActivity
 }) => {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -48,15 +52,27 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
         const activityAddresses = allActivities
           .filter(activity => activity.location?.name || activity.name)
           .map(activity => activity.location?.name || activity.name)
+        
+        console.log('活动地点列表:', activityAddresses)
 
-        // 获取默认目的地（从行程中提取或使用北京作为默认）
-        let defaultDestination = '北京'
-        if (dailyPlans.length > 0) {
+        // 获取目的地（优先使用传入的目的地参数）
+        let defaultDestination = destination || ''
+        if (!defaultDestination && dailyPlans.length > 0) {
           // 尝试从活动地点推断目的地
           const firstActivity = allActivities[0]
           if (firstActivity && firstActivity.location?.name) {
             defaultDestination = firstActivity.location.name
           }
+        }
+        
+        // 如果没有找到目的地，使用第一个活动的名称
+        if (!defaultDestination && allActivities.length > 0) {
+          defaultDestination = allActivities[0].name
+        }
+        
+        // 如果还是没有目的地，使用北京作为默认
+        if (!defaultDestination) {
+          defaultDestination = '北京'
         }
 
         // 获取默认目的地的坐标
@@ -92,10 +108,55 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
         // 如果有活动地点，添加活动标记
         if (activityAddresses.length > 0) {
           try {
-            const activityLocations = await mapService.batchGeocode(activityAddresses)
+            // 使用目的地城市限定地理编码范围，避免跨城市标注错误
+            const activityLocations = await mapService.batchGeocode(activityAddresses, defaultDestination)
             
-            activityLocations.forEach((location, index) => {
-              const activity = allActivities[index]
+            console.log('地理编码结果:', activityLocations)
+            
+            // 创建活动与位置的映射（用于调试）
+            const activityLocationMap = new Map()
+            allActivities.forEach((activity, index) => {
+              const location = activityLocations[index]
+              if (location) {
+                activityLocationMap.set(activity, location)
+              }
+            })
+            console.log('活动位置映射:', activityLocationMap)
+            
+            // 过滤掉无效的坐标和重复的地点
+            const validLocations = activityLocations.filter((location, index) => {
+              if (!location) return false
+              
+              // 检查坐标是否有效（放宽条件，只排除明显无效的坐标）
+              const isValidCoordinate =
+                location.lat !== 0 && location.lng !== 0 &&
+                !isNaN(location.lat) && !isNaN(location.lng) &&
+                location.lat >= -90 && location.lat <= 90 &&
+                location.lng >= -180 && location.lng <= 180 &&
+                // 排除明显的默认坐标
+                !(location.lat === 39.9042 && location.lng === 116.4074) // 北京默认坐标
+              
+              // 检查是否与目的地坐标相同（避免重复标记，放宽判断条件）
+              const isSameAsDestination =
+                Math.abs(location.lat - centerLocation.lat) < 0.05 &&
+                Math.abs(location.lng - centerLocation.lng) < 0.05
+              
+              // 检查是否与之前的地点重复（进一步放宽重复判断条件）
+              const isDuplicate = activityLocations.slice(0, index).some(prevLoc =>
+                prevLoc &&
+                Math.abs(prevLoc.lat - location.lat) < 0.05 &&
+                Math.abs(prevLoc.lng - location.lng) < 0.05
+              )
+              
+              return isValidCoordinate && !isSameAsDestination && !isDuplicate
+            })
+            
+            console.log('有效地点数量:', validLocations.length)
+            
+            // 为每个有效位置添加标记
+            validLocations.forEach((location, index) => {
+              const originalIndex = activityLocations.indexOf(location)
+              const activity = allActivities[originalIndex]
               const dayNumber = dailyPlans.findIndex(plan =>
                 plan.activities.includes(activity)
               ) + 1
@@ -111,9 +172,31 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
                 isSelected
               )
             })
+            
+            // 为地理编码失败的活动创建备用标记（使用目的地坐标）
+            allActivities.forEach((activity, index) => {
+              const location = activityLocations[index]
+              if (!location || !validLocations.includes(location)) {
+                const dayNumber = dailyPlans.findIndex(plan =>
+                  plan.activities.includes(activity)
+                ) + 1
+                
+                const isSelected = dayNumber === selectedDay
+                
+                // 使用目的地坐标作为备用标记
+                addMarker(
+                  centerLocation,
+                  activity.name,
+                  getActivityColor(activity.type),
+                  dayNumber,
+                  activity.description,
+                  isSelected
+                )
+              }
+            })
 
             // 自动调整地图视野（包含目的地和所有活动地点）
-            const allLocations = [centerLocation, ...activityLocations.filter(loc => loc !== null)]
+            const allLocations = [centerLocation, ...validLocations]
             if (allLocations.length > 0) {
               // 使用更简单的方法设置地图视野
               const bounds = new window.AMap.Bounds()
@@ -170,7 +253,7 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
     if (activityAddresses.length === 0) return
 
     // 批量获取坐标并重新添加标记
-    mapService.batchGeocode(activityAddresses).then(activityLocations => {
+    mapService.batchGeocode(activityAddresses, destination).then(activityLocations => {
       activityLocations.forEach((location, index) => {
         const activity = allActivities[index]
         const dayNumber = dailyPlans.findIndex(plan =>
@@ -190,6 +273,66 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
       })
     })
   }, [selectedDay, dailyPlans])
+
+  // 当高亮活动变化时，定位到具体位置
+  useEffect(() => {
+    if (!mapInstanceRef.current || !highlightedActivity) return
+    
+    const { dayNumber, activityIndex } = highlightedActivity
+    const dayPlan = dailyPlans.find(plan => plan.day_number === dayNumber)
+    if (!dayPlan || !dayPlan.activities[activityIndex]) return
+    
+    const activity = dayPlan.activities[activityIndex]
+    
+    // 尝试从活动地点名称获取坐标
+    const locationName = activity.location?.name || activity.name
+    if (!locationName) {
+      console.warn('活动没有有效的地点名称:', activity)
+      return
+    }
+    
+    console.log('尝试定位活动:', activity.name, '地点:', locationName)
+    
+    // 获取活动地点的坐标并定位
+    const locateActivity = async () => {
+      try {
+        // 首先尝试使用活动地点名称
+        let location = await mapService.geocode(locationName, destination)
+        
+        // 如果失败，尝试使用活动名称
+        if (!location && activity.name !== locationName) {
+          console.log('尝试使用活动名称定位:', activity.name)
+          location = await mapService.geocode(activity.name, destination)
+        }
+        
+        if (location && mapInstanceRef.current) {
+          // 定位到该位置并放大
+          mapInstanceRef.current.setCenter([location.lng, location.lat])
+          mapInstanceRef.current.setZoom(15) // 放大到更详细的级别
+          
+          // 高亮对应的标记点
+          markersRef.current.forEach(marker => {
+            const markerPosition = marker.getPosition()
+            if (markerPosition &&
+                Math.abs(markerPosition.lng - location.lng) < 0.01 &&
+                Math.abs(markerPosition.lat - location.lat) < 0.01) {
+              // 添加高亮效果，比如闪烁动画
+              marker.setAnimation('AMAP_ANIMATION_BOUNCE')
+              setTimeout(() => {
+                marker.setAnimation('')
+              }, 2000)
+            }
+          })
+        } else {
+          console.warn('无法获取活动地点的坐标:', locationName)
+        }
+      } catch (error) {
+        console.warn('定位活动地点失败:', error)
+      }
+    }
+    
+    locateActivity()
+  }, [highlightedActivity, dailyPlans, destination])
 
   // 加载高德地图脚本
   const loadAMapScript = (): Promise<void> => {
@@ -330,7 +473,7 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
       {!loading && (
         <div style={{ marginTop: 16 }}>
           <Text type="secondary">
-            当前显示第 {selectedDay} 天的活动地点
+            当前显示第 {selectedDay} 天的活动地点（地图信息仅供参考）
           </Text>
         </div>
       )}

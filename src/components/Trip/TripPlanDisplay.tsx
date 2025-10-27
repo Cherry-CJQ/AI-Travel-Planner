@@ -11,14 +11,17 @@ import {
   Space,
   Divider,
   Typography,
-  Progress
+  Progress,
+  Alert,
+  notification
 } from 'antd'
 import {
   EnvironmentOutlined,
   ClockCircleOutlined,
   DollarOutlined,
   SaveOutlined,
-  ShareAltOutlined
+  ShareAltOutlined,
+  WarningOutlined
 } from '@ant-design/icons'
 import { TripGenerationResponse } from '../../types/database'
 import { useTripStore } from '../../stores/tripStore'
@@ -39,6 +42,7 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
 }) => {
   const { saveGeneratedTrip, loading } = useTripStore()
   const [highlightedActivity, setHighlightedActivity] = useState<{dayIndex: number, activityIndex: number} | null>(null)
+  const [mapError, setMapError] = useState<string | null>(null)
 
   const handleSave = async () => {
     try {
@@ -51,29 +55,88 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
 
   // 处理时间轴活动项点击
   const handleActivityClick = (dayIndex: number, activityIndex: number) => {
-    setHighlightedActivity({ dayIndex, activityIndex })
+    try {
+      // 验证索引有效性
+      if (!plan.dailyPlan[dayIndex] || !plan.dailyPlan[dayIndex].activities[activityIndex]) {
+        console.warn('无效的活动索引:', { dayIndex, activityIndex })
+        notification.warning({
+          message: '活动信息不完整',
+          description: '无法定位到该活动，请检查活动信息',
+          placement: 'topRight'
+        })
+        return
+      }
+
+      // 直接使用原始索引，不计算平铺索引
+      setHighlightedActivity({ dayIndex, activityIndex })
+      setMapError(null) // 清除之前的错误
+      
+      // 尝试定位到活动地点
+      const activity = plan.dailyPlan[dayIndex]?.activities[activityIndex]
+      if (activity && (activity.location?.name || activity.name)) {
+        console.log(`定位到活动: ${activity.name} - ${activity.location?.name || activity.name}`)
+      } else {
+        console.warn('活动缺少位置信息:', activity)
+        notification.info({
+          message: '位置信息待确认',
+          description: '该活动缺少具体位置信息，地图将定位到目的地',
+          placement: 'topRight'
+        })
+      }
+    } catch (error) {
+      console.error('活动点击处理失败:', error)
+      notification.error({
+        message: '活动定位失败',
+        description: '无法定位到该活动，请稍后重试',
+        placement: 'topRight'
+      })
+    }
   }
 
   // 处理地图位置点击
   const handleLocationClick = (location: any) => {
-    // 根据位置信息找到对应的活动项
-    const allActivities = plan.dailyPlan.flatMap((dayPlan, dayIndex) =>
-      dayPlan.activities.map((activity, activityIndex) => ({
-        ...activity,
-        dayIndex,
-        activityIndex
-      }))
-    )
-    
-    const matchedActivity = allActivities.find(activity =>
-      activity.location?.name === location.name ||
-      activity.name === location.name
-    )
-    
-    if (matchedActivity) {
-      setHighlightedActivity({
-        dayIndex: matchedActivity.dayIndex,
-        activityIndex: matchedActivity.activityIndex
+    try {
+      // 根据位置信息找到对应的活动项
+      const allActivities = plan.dailyPlan.flatMap((dayPlan, dayIndex) =>
+        dayPlan.activities.map((activity, activityIndex) => ({
+          ...activity,
+          dayIndex,
+          activityIndex
+        }))
+      )
+      
+      const matchedActivity = allActivities.find(activity =>
+        activity.location?.name === location.name ||
+        activity.name === location.name
+      )
+      
+      if (matchedActivity) {
+        // 计算在平铺activities数组中的索引
+        let flatIndex = 0
+        for (let i = 0; i < matchedActivity.dayIndex; i++) {
+          flatIndex += plan.dailyPlan[i].activities.length
+        }
+        flatIndex += matchedActivity.activityIndex
+        
+        setHighlightedActivity({
+          dayIndex: matchedActivity.dayIndex,
+          activityIndex: flatIndex
+        })
+        setMapError(null) // 清除之前的错误
+      } else {
+        console.warn('未找到匹配的活动:', location.name)
+        notification.info({
+          message: '未找到匹配的活动',
+          description: '该位置没有对应的行程活动',
+          placement: 'topRight'
+        })
+      }
+    } catch (error) {
+      console.error('地图点击处理失败:', error)
+      notification.error({
+        message: '地图交互失败',
+        description: '无法处理地图点击，请稍后重试',
+        placement: 'topRight'
       })
     }
   }
@@ -165,8 +228,14 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
             
             <Timeline>
               {dayPlan.activities.map((activity, activityIndex) => {
-                const isHighlighted = highlightedActivity?.dayIndex === dayIndex &&
-                                    highlightedActivity?.activityIndex === activityIndex
+                // 计算当前活动在平铺数组中的索引
+                let currentFlatIndex = 0
+                for (let i = 0; i < dayIndex; i++) {
+                  currentFlatIndex += plan.dailyPlan[i].activities.length
+                }
+                currentFlatIndex += activityIndex
+                
+                const isHighlighted = highlightedActivity?.activityIndex === currentFlatIndex
                 
                 return (
                   <Timeline.Item
@@ -242,6 +311,19 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
   // 地图内容
   const mapContent = (
     <div>
+      {mapError && (
+        <Alert
+          message="地图交互提示"
+          description={mapError}
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 16 }}
+          closable
+          onClose={() => setMapError(null)}
+        />
+      )}
+      
       <TripMap
         destination={plan.tripSummary.destination}
         activities={allActivities}

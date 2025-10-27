@@ -37,6 +37,7 @@ const TripDetailPage: React.FC = () => {
   const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([])
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedDay, setSelectedDay] = useState<number>(1)
+  const [highlightedActivity, setHighlightedActivity] = useState<{ dayNumber: number; activityIndex: number } | null>(null)
 
   useEffect(() => {
     if (tripId) {
@@ -239,8 +240,19 @@ const TripDetailPage: React.FC = () => {
                         }}
                         onClick={() => {
                           if (activity.location) {
-                            // 可以添加地图高亮逻辑
+                            // 设置高亮活动并定位到地图位置
+                            setHighlightedActivity({
+                              dayNumber: plan.day_number,
+                              activityIndex: plan.activities.indexOf(activity)
+                            })
                             message.info(`已定位到: ${activity.location.name}`)
+                          } else {
+                            // 即使没有location信息，也尝试定位
+                            setHighlightedActivity({
+                              dayNumber: plan.day_number,
+                              activityIndex: plan.activities.indexOf(activity)
+                            })
+                            message.info(`尝试定位: ${activity.name}`)
                           }
                         }}
                       >
@@ -308,7 +320,9 @@ const TripDetailPage: React.FC = () => {
           <TripDetailMap
             dailyPlans={dailyPlans}
             selectedDay={selectedDay}
+            destination={trip.destination}
             onMarkerClick={setSelectedDay}
+            highlightedActivity={highlightedActivity}
           />
         </Col>
       </Row>

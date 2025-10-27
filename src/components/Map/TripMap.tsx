@@ -69,15 +69,60 @@ export const TripMap: React.FC<TripMapProps> = ({
           .filter(activity => activity.location?.name || activity.name)
           .map(activity => activity.location?.name || activity.name)
 
-        const activityLocations = await mapService.batchGeocode(activityAddresses)
-        setLocations(activityLocations)
+        console.log('活动地点列表:', activityAddresses)
 
-        // 添加活动地点标记
-        activityLocations.forEach((location, index) => {
-          const activity = activities[index]
-          const isHighlighted = highlightedActivity ?
-                               (highlightedActivity.dayIndex === Math.floor(index / activities.length) &&
-                                highlightedActivity.activityIndex === index % activities.length) : false
+        // 使用目的地城市限定地理编码范围，避免跨城市标注错误
+        const activityLocations = await mapService.batchGeocode(activityAddresses, destination)
+        
+        console.log('地理编码结果:', activityLocations)
+        
+        // 创建活动与位置的映射（用于调试）
+        const activityLocationMap = new Map()
+        activities.forEach((activity, index) => {
+          const location = activityLocations[index]
+          if (location) {
+            activityLocationMap.set(activity, location)
+          }
+        })
+        console.log('活动位置映射:', activityLocationMap)
+        
+        // 过滤掉无效的坐标和重复的地点
+        const validLocations = activityLocations.filter((location, index) => {
+          if (!location) return false
+          
+          // 检查坐标是否有效（放宽条件，只排除明显无效的坐标）
+          const isValidCoordinate =
+            location.lat !== 0 && location.lng !== 0 &&
+            !isNaN(location.lat) && !isNaN(location.lng) &&
+            location.lat >= -90 && location.lat <= 90 &&
+            location.lng >= -180 && location.lng <= 180 &&
+            // 排除明显的默认坐标
+            !(location.lat === 39.9042 && location.lng === 116.4074) // 北京默认坐标
+          
+          // 检查是否与目的地坐标相同（避免重复标记，放宽判断条件）
+          const isSameAsDestination =
+            Math.abs(location.lat - destinationLocation.lat) < 0.05 &&
+            Math.abs(location.lng - destinationLocation.lng) < 0.05
+          
+          // 检查是否与之前的地点重复（进一步放宽重复判断条件）
+          const isDuplicate = activityLocations.slice(0, index).some(prevLoc =>
+            prevLoc &&
+            Math.abs(prevLoc.lat - location.lat) < 0.05 &&
+            Math.abs(prevLoc.lng - location.lng) < 0.05
+          )
+          
+          return isValidCoordinate && !isSameAsDestination && !isDuplicate
+        })
+        
+        console.log('有效地点数量:', validLocations.length)
+        
+        setLocations(validLocations)
+
+        // 为每个有效位置添加标记
+        validLocations.forEach((location, index) => {
+          const originalIndex = activityLocations.indexOf(location)
+          const activity = activities[originalIndex]
+          const isHighlighted = highlightedActivity?.activityIndex === originalIndex
           
           addMarker(
             location,
@@ -86,6 +131,21 @@ export const TripMap: React.FC<TripMapProps> = ({
             activity.description,
             isHighlighted
           )
+        })
+
+        // 为地理编码失败的活动创建备用标记（使用目的地坐标）
+        activities.forEach((activity, index) => {
+          const location = activityLocations[index]
+          if (!location || !validLocations.includes(location)) {
+            // 使用目的地坐标作为备用标记
+            addMarker(
+              destinationLocation,
+              activity.name,
+              getActivityColor(activity.type),
+              `${activity.description} (位置信息待确认)`,
+              false
+            )
+          }
         })
 
         // 自动调整地图视野
@@ -216,32 +276,97 @@ export const TripMap: React.FC<TripMapProps> = ({
     }, 100)
   }
 
-  // 当高亮活动变化时，重新渲染标记
+  // 当高亮活动变化时，只定位到活动位置，不重新渲染标记
   useEffect(() => {
-    if (!mapInstanceRef.current || !window.AMap) return
+    if (!mapInstanceRef.current || !window.AMap || !highlightedActivity) return
     
-    // 清除所有标记
-    markersRef.current.forEach(marker => marker.setMap(null))
-    markersRef.current = []
+    const { dayIndex, activityIndex } = highlightedActivity
     
-    // 重新添加标记
-    if (locations.length > 0) {
-      locations.forEach((location, index) => {
-        const activity = activities[index]
-        const isHighlighted = highlightedActivity ?
-                             (highlightedActivity.dayIndex === Math.floor(index / activities.length) &&
-                              highlightedActivity.activityIndex === index % activities.length) : false
-        
-        addMarker(
-          location,
-          activity.name,
-          getActivityColor(activity.type),
-          activity.description,
-          isHighlighted
-        )
-      })
+    // 查找对应的活动 - 使用平铺的activities数组
+    let targetActivity = null
+    let currentIndex = 0
+    
+    // 遍历所有活动，找到对应索引的活动
+    for (let i = 0; i < activities.length; i++) {
+      const activity = activities[i]
+      // 检查这个活动是否在指定的平铺索引位置
+      if (i === activityIndex) {
+        targetActivity = activity
+        break
+      }
     }
-  }, [highlightedActivity])
+    
+    if (!targetActivity) {
+      console.warn('无法找到对应的活动:', highlightedActivity)
+      return
+    }
+    
+    // 尝试从活动地点名称获取坐标
+    const locationName = targetActivity.location?.name || targetActivity.name
+    if (!locationName) {
+      console.warn('活动没有有效的地点名称:', targetActivity)
+      return
+    }
+    
+    console.log('尝试定位活动:', targetActivity.name, '地点:', locationName, '平铺索引:', activityIndex)
+    
+    // 获取活动地点的坐标并定位
+    const locateActivity = async () => {
+      try {
+        // 首先尝试使用活动地点名称
+        let location = await mapService.geocode(locationName, destination)
+        
+        // 如果失败，尝试使用活动名称
+        if (!location && targetActivity.name !== locationName) {
+          console.log('尝试使用活动名称定位:', targetActivity.name)
+          location = await mapService.geocode(targetActivity.name, destination)
+        }
+        
+        if (location && mapInstanceRef.current) {
+          // 定位到该位置并放大，确保位置固定
+          mapInstanceRef.current.setCenter([location.lng, location.lat])
+          mapInstanceRef.current.setZoom(15) // 放大到更详细的级别
+          
+          // 高亮对应的标记点
+          markersRef.current.forEach(marker => {
+            const markerPosition = marker.getPosition()
+            if (markerPosition &&
+                Math.abs(markerPosition.lng - location.lng) < 0.01 &&
+                Math.abs(markerPosition.lat - location.lat) < 0.01) {
+              // 添加高亮效果，比如闪烁动画
+              marker.setAnimation('AMAP_ANIMATION_BOUNCE')
+              setTimeout(() => {
+                marker.setAnimation('')
+              }, 2000)
+            }
+          })
+          
+          // 确保地图不会自动调整视野
+          mapInstanceRef.current.setFitView(false)
+        } else {
+          console.warn('无法获取活动地点的坐标:', locationName)
+          // 使用目的地作为备用位置
+          const destLocation = await mapService.geocode(destination)
+          if (destLocation && mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter([destLocation.lng, destLocation.lat])
+            mapInstanceRef.current.setZoom(12)
+            mapInstanceRef.current.setFitView(false)
+          }
+        }
+      } catch (error) {
+        console.warn('定位活动地点失败:', error)
+        // 使用目的地作为备用位置
+        const destLocation = await mapService.geocode(destination)
+        if (destLocation && mapInstanceRef.current) {
+          mapInstanceRef.current.setCenter([destLocation.lng, destLocation.lat])
+          mapInstanceRef.current.setZoom(12)
+          mapInstanceRef.current.setFitView(false)
+        }
+      }
+    }
+    
+    locateActivity()
+  }, [highlightedActivity, activities, destination])
 
   if (error) {
     return (

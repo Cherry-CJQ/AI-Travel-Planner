@@ -257,15 +257,19 @@ class MapService {
   }
 
   // 地址转坐标（地理编码）
-  async geocode(address: string): Promise<MapLocation | null> {
+  async geocode(address: string, city?: string): Promise<MapLocation | null> {
     if (!this.apiKey) {
       throw new Error('地图API Key未配置，请在设置页面配置您的高德地图API Key')
     }
 
     try {
-      const url = this.buildSignedUrl('/geocode/geo', {
+      const params: Record<string, string> = {
         address: address
-      })
+      }
+      if (city) {
+        params.city = city
+      }
+      const url = this.buildSignedUrl('/geocode/geo', params)
       const response = await fetch(url)
       
       if (!response.ok) {
@@ -417,12 +421,12 @@ class MapService {
   }
 
   // 批量获取地点坐标
-  async batchGeocode(addresses: string[]): Promise<MapLocation[]> {
+  async batchGeocode(addresses: string[], city?: string): Promise<MapLocation[]> {
     const locations: MapLocation[] = []
     
     for (const address of addresses) {
       try {
-        const location = await this.geocode(address)
+        const location = await this.geocode(address, city)
         if (location) {
           locations.push(location)
         }
