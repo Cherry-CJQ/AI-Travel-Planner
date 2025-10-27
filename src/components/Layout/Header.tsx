@@ -1,5 +1,5 @@
 import React from 'react'
-import { Layout, Typography, Button, Space, Avatar, Dropdown, message } from 'antd'
+import { Layout, Typography, Button, Space, Avatar, Dropdown, message, Tag } from 'antd'
 import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../../stores/appStore'
@@ -82,6 +82,90 @@ const Header: React.FC = () => {
           <span className="mobile-hidden">🗺️ AI旅行规划助手</span>
           <span className="desktop-hidden tablet-hidden">AI旅行助手</span>
         </Title>
+      </div>
+
+      {/* 广告栏 - 柔和流光版 */}
+      <div
+        style={{
+          flex: 1,
+          textAlign: 'center',
+          margin: '0 16px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            padding: '10px 28px',
+            borderRadius: '18px',
+            fontSize: '15px',
+            fontWeight: 500,
+            color: '#1677ff',
+            maxWidth: '640px',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            border: '1px solid rgba(24,144,255,0.25)',
+            background:
+              'linear-gradient(135deg, rgba(24,144,255,0.08), rgba(24,144,255,0.12))',
+            boxShadow: '0 4px 12px rgba(24,144,255,0.12)',
+            backdropFilter: 'blur(8px)',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+            animation: 'subtlePulse 6s ease-in-out infinite',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(24,144,255,0.25)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(24,144,255,0.12)';
+          }}
+        >
+          ✨ <span style={{ opacity: 0.95 }}>这么近，那么美，周末到河北！</span>
+
+          {/* 柔光流动层 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '200%',
+              height: '100%',
+              background:
+                'radial-gradient(circle at 0% 50%, rgba(24,144,255,0.25), transparent 60%)',
+              animation: 'softSweep 8s linear infinite',
+              pointerEvents: 'none',
+              filter: 'blur(12px)',
+              opacity: 0.6,
+            }}
+          />
+        </div>
+
+        <style>
+          {`
+            @keyframes subtlePulse {
+              0%, 100% {
+                box-shadow: 0 4px 12px rgba(24,144,255,0.12);
+              }
+              50% {
+                box-shadow: 0 6px 18px rgba(24,144,255,0.22);
+              }
+            }
+
+            @keyframes softSweep {
+              0% {
+                transform: translateX(-50%);
+              }
+              100% {
+                transform: translateX(50%);
+              }
+            }
+          `}
+        </style>
       </div>
 
       <Space size="middle" wrap>

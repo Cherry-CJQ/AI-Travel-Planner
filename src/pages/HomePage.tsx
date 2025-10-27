@@ -4,11 +4,8 @@ import {
   AudioOutlined,
   CompassOutlined,
   DollarOutlined,
-  TeamOutlined,
-  AudioMutedOutlined
+  TeamOutlined
 } from '@ant-design/icons'
-import VoiceInput from '../components/Voice/VoiceInput'
-import VoiceExpense from '../components/Voice/VoiceExpense'
 import { TripGenerationForm } from '../components/Trip/TripGenerationForm'
 import { TripPlanDisplay } from '../components/Trip/TripPlanDisplay'
 import { useAppStore } from '../stores/appStore'
@@ -21,21 +18,7 @@ const { Step } = Steps
 const HomePage: React.FC = () => {
   const { user } = useAppStore()
   const { generatedPlan, clearGeneratedPlan } = useTripStore()
-  const [showVoiceInput, setShowVoiceInput] = useState(false)
-  const [showVoiceExpense, setShowVoiceExpense] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
-
-  const [voiceTranscript, setVoiceTranscript] = useState('')
-
-  const handleVoiceInputChange = (transcript: string) => {
-    setVoiceTranscript(transcript)
-    // TODO: 处理语音输入内容
-  }
-
-  const handleVoiceExpenseAdd = (amount: number, category: string, description?: string) => {
-    message.success(`记录支出: ¥${amount} (${category})`)
-    // TODO: 处理支出记录
-  }
 
   const handleTripGenerationSuccess = (request: TripGenerationRequest) => {
     setCurrentStep(1)
@@ -58,24 +41,6 @@ const HomePage: React.FC = () => {
       content: (
         <div>
           <TripGenerationForm onSuccess={handleTripGenerationSuccess} />
-          
-          <Card title="语音输入" style={{ marginTop: 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Button 
-                type="dashed" 
-                icon={showVoiceInput ? <AudioMutedOutlined /> : <AudioOutlined />}
-                onClick={() => setShowVoiceInput(!showVoiceInput)}
-                size="large"
-                block
-              >
-                {showVoiceInput ? '关闭语音输入' : '语音输入旅行需求'}
-              </Button>
-              
-              {showVoiceInput && (
-                <VoiceInput onTranscriptChange={handleVoiceInputChange} />
-              )}
-            </Space>
-          </Card>
         </div>
       )
     },
@@ -99,64 +64,63 @@ const HomePage: React.FC = () => {
   ]
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: '95vw', margin: '0 auto', padding: '0px 20px', minHeight: 'calc(100vh - 80px)' }}>
       {/* 欢迎区域 */}
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <Title level={1} style={{ color: '#1890ff' }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: 0,
+        padding: '8px 0',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '8px',
+        color: 'white',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <Title level={2} style={{ color: 'white', margin: 0, fontSize: '20px' }}>
           🗺️ AI旅行规划助手
         </Title>
-        <Paragraph style={{ fontSize: '16px', color: '#666' }}>
+        <Paragraph style={{
+          fontSize: '14px',
+          color: 'rgba(255,255,255,0.9)',
+          margin: '4px 0 0 0',
+          maxWidth: '800px',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          textAlign: 'center'
+        }}>
           通过AI大语言模型和语音识别技术，为您打造个性化的智能旅行方案
         </Paragraph>
       </div>
 
       {user ? (
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Steps current={currentStep} style={{ marginBottom: 32 }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Steps current={currentStep} style={{ marginBottom: 16 }}>
             {steps.map(item => (
               <Step key={item.title} title={item.title} />
             ))}
           </Steps>
 
-          <div style={{ minHeight: 400 }}>
+          <div style={{ minHeight: 300 }}>
             {steps[currentStep].content}
           </div>
 
           {currentStep === 1 && (
-            <div style={{ textAlign: 'center', marginTop: 24 }}>
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
               <Button onClick={() => setCurrentStep(0)}>
                 重新生成计划
               </Button>
             </div>
           )}
-
-          <Card title="其他功能">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Button 
-                icon={showVoiceExpense ? <AudioMutedOutlined /> : <AudioOutlined />}
-                onClick={() => setShowVoiceExpense(!showVoiceExpense)}
-                size="large"
-                block
-              >
-                {showVoiceExpense ? '关闭语音记账' : '语音记账'}
-              </Button>
-
-              {showVoiceExpense && (
-                <VoiceExpense onExpenseAdd={handleVoiceExpenseAdd} />
-              )}
-            </Space>
-          </Card>
         </Space>
       ) : (
         <div>
-          <Card>
-            <Paragraph style={{ textAlign: 'center', fontSize: '16px' }}>
+          <Card style={{ marginBottom: 16 }}>
+            <Paragraph style={{ textAlign: 'center', fontSize: '14px' }}>
               请先登录以使用完整的旅行规划功能。
             </Paragraph>
           </Card>
 
           {/* 功能特性 */}
-          <Row gutter={[24, 24]} style={{ marginTop: 48 }}>
+          <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
             <Col xs={24} sm={12} lg={6}>
               <Card
                 hoverable
@@ -208,7 +172,7 @@ const HomePage: React.FC = () => {
           </Row>
 
           {/* 技术栈说明 */}
-          <Card title="技术特性" style={{ marginTop: 24 }}>
+          <Card title="技术特性" style={{ marginTop: 16 }}>
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
                 <strong>前端技术</strong>

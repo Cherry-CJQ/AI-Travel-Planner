@@ -14,13 +14,15 @@ import {
   Tag,
   Typography,
   Tabs,
-  Alert
+  Alert,
+  Divider
 } from 'antd'
-import { PlusOutlined, MinusOutlined, BulbOutlined, FormOutlined } from '@ant-design/icons'
+import { PlusOutlined, MinusOutlined, BulbOutlined, FormOutlined, AudioOutlined } from '@ant-design/icons'
 import { TripGenerationRequest } from '../../types/database'
 import { useTripStore } from '../../stores/tripStore'
 import { useAppStore } from '../../stores/appStore'
 import { llmService, initializeLLMService } from '../../services/llmService'
+import VoiceInput from '../Voice/VoiceInput'
 
 const { Option } = Select
 const { RangePicker } = DatePicker
@@ -156,9 +158,39 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
   const isAPIKeyConfigured = userSettings?.llm_api_key
 
   return (
-    <Card 
-      title="生成旅行计划" 
-      style={{ maxWidth: 800, margin: '0 auto' }}
+    <Card
+      title={
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1890ff',
+          height: '16px'
+        }}>
+          <span style={{
+            marginRight: 8,
+            fontSize: '20px',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          }}>✈️</span>
+          生成旅行计划
+        </div>
+      }
+      style={{
+        maxWidth: '95vw',
+        margin: '0 auto',
+        textAlign: 'center',
+        border: '1px solid #e8f4fd',
+        boxShadow: '0 2px 8px rgba(24, 144, 255, 0.1)'
+      }}
       extra={
         !isAPIKeyConfigured && (
           <Tag color="orange">请先在设置页面配置API Key</Tag>
@@ -168,7 +200,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
       <Tabs 
         activeKey={inputMode} 
         onChange={(key) => setInputMode(key as 'form' | 'text')}
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: -10 }}
       >
         <TabPane 
           tab={
@@ -185,8 +217,9 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
             onFinish={handleSubmit}
             disabled={!isAPIKeyConfigured}
           >
-            <Row gutter={16}>
-              <Col span={12}>
+            {/* 第一行：目的地、天数、日期 */}
+            <Row gutter={8} style={{ marginBottom: -25 }}>
+              <Col span={8}>
                 <Form.Item
                   label="目的地"
                   name="destination"
@@ -195,53 +228,51 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                   <Input placeholder="例如：北京、上海、东京" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col span={8}>
                 <Form.Item
                   label="旅行天数"
                   name="duration"
                   rules={[{ required: true, message: '请输入旅行天数' }]}
                 >
-                  <InputNumber 
-                    min={1} 
-                    max={30} 
-                    placeholder="1-30天" 
+                  <InputNumber
+                    min={1}
+                    max={30}
+                    placeholder="1-30天"
                     style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  label="旅行日期"
+                  name="travelDates"
+                  extra="可选，将根据日期特点优化行程"
+                >
+                  <RangePicker
+                    style={{ width: '100%' }}
+                    placeholder={['开始日期', '结束日期']}
                   />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="旅行日期"
-                  name="travelDates"
-                  extra="可选，如填写将根据日期特点（节假日、工作日等）优化行程安排"
-                >
-                  <RangePicker
-                    style={{ width: '100%' }}
-                    placeholder={['开始日期（可选）', '结束日期（可选）']}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
+            {/* 第二行：人数、风格、金额 */}
+            <Row gutter={8} style={{ marginBottom: -10 }}>
+              <Col span={8}>
                 <Form.Item
                   label="出行人数"
                   name="travelers"
                   rules={[{ required: true, message: '请输入出行人数' }]}
                 >
-                  <InputNumber 
-                    min={1} 
-                    max={20} 
-                    placeholder="1-20人" 
+                  <InputNumber
+                    min={1}
+                    max={20}
+                    placeholder="1-20人"
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
               </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
+              <Col span={8}>
                 <Form.Item
                   label="旅行风格"
                   name="travelStyle"
@@ -256,7 +287,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col span={8}>
                 <Form.Item
                   label="预算金额"
                   name="budgetAmount"
@@ -265,7 +296,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                   <InputNumber
                     min={100}
                     max={100000}
-                    placeholder="请输入总预算金额"
+                    placeholder="总预算金额"
                     style={{ width: '100%' }}
                     addonBefore="¥"
                   />
@@ -282,8 +313,9 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                   </span>
                 )
               }
+              style={{ marginBottom: 8 }}
             >
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space direction="vertical" style={{ width: '100%' }} size="small">
                 <Space.Compact style={{ width: '100%' }}>
                   <Input
                     value={newPreference}
@@ -312,7 +344,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
                       key={pref}
                       closable
                       onClose={() => removePreference(pref)}
-                      style={{ marginBottom: 8 }}
+                      style={{ marginBottom: 4 }}
                     >
                       {pref}
                     </Tag>
@@ -324,9 +356,10 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
             <Form.Item
               label="特殊要求"
               name="specialRequirements"
+              style={{ marginBottom: 8 }}
             >
-              <Input.TextArea 
-                rows={3}
+              <Input.TextArea
+                rows={2}
                 placeholder="例如：需要无障碍设施、有小孩同行、饮食限制等"
               />
             </Form.Item>
@@ -361,25 +394,46 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
           }
           key="text"
         >
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space direction="vertical" style={{ width: '100%'}} size="large">
             <Alert
               message="智能输入说明"
               description={
                 isAPIKeyConfigured
-                  ? "请用自然语言描述您的旅行需求，系统会调用AI大模型自动提取关键信息并填充到表单中。"
-                  : "请用自然语言描述您的旅行需求，系统会使用本地解析器提取关键信息。如需使用AI大模型进行更准确的解析，请在设置页面配置API Key。"
+                  ? "请用自然语言描述您的旅行需求，系统会调用AI大模型自动提取关键信息并填充到表单中。支持语音输入和文本输入两种方式。"
+                  : "请用自然语言描述您的旅行需求，系统会使用本地解析器提取关键信息。支持语音输入和文本输入两种方式。如需使用AI大模型进行更准确的解析，请在设置页面配置API Key。"
               }
               type="info"
               showIcon
             />
             
-            <TextArea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="例如：我和女朋友想去上海玩2天，预算3000，喜欢美食，想要打卡一下上海的标志地点"
-              rows={6}
-              style={{ marginBottom: 16 }}
-            />
+            {/* 语音输入部分 */}
+            <div style={{ marginBottom: 16 }}>
+              <Text strong style={{ marginBottom: 8, display: 'block' }}>
+                <AudioOutlined /> 语音输入
+              </Text>
+              <VoiceInput
+                onTranscriptChange={(transcript) => {
+                  setTextInput(transcript)
+                }}
+                placeholder="点击麦克风开始说话，描述您的旅行需求..."
+              />
+            </div>
+
+            <Divider>或</Divider>
+            
+            {/* 文本输入部分 */}
+            <div style={{ marginBottom: 16 }}>
+              <Text strong style={{ marginBottom: 8, display: 'block' }}>
+                文本输入
+              </Text>
+              <TextArea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="例如：我和女朋友想去上海玩2天，预算3000，喜欢美食，想要打卡一下上海的标志地点"
+                rows={6}
+                style={{ marginBottom: 16 }}
+              />
+            </div>
             
             <Button
               type="primary"
