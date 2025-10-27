@@ -402,14 +402,12 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
       </Card>
 
       {/* 主内容区域 - 行程信息与地图并排显示 */}
-      <div className="trip-plan-container" style={{ display: 'flex', height: 'calc(100vh - 200px)', position: 'relative' }}>
+      <div className="trip-plan-container" style={{ display: 'flex', position: 'relative' }}>
         {/* 左侧：行程详情 - 主要信息区域 */}
         <div
           className="trip-plan-left-panel"
           style={{
             width: `${leftPanelWidth}%`,
-            height: '100%',
-            overflow: 'auto',
             paddingRight: '8px'
           }}
         >
@@ -421,7 +419,8 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
           className="resizable-divider"
           style={{
             width: '8px',
-            height: '100%',
+            height: '500px',
+            alignSelf: 'flex-start',
           }}
           onMouseDown={(e) => {
             e.preventDefault()
@@ -455,8 +454,6 @@ export const TripPlanDisplay: React.FC<TripPlanDisplayProps> = ({
           className="trip-plan-right-panel"
           style={{
             width: `${100 - leftPanelWidth}%`,
-            height: '100%',
-            overflow: 'auto',
             paddingLeft: '8px'
           }}
         >
