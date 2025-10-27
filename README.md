@@ -31,7 +31,7 @@ AI旅行规划助手是一个基于AI大语言模型、语音识别和地图交�
 ### 使用预构建镜像
 
 1. **下载Docker镜像文件**：
-   - 从 [Releases页面](https://github.com/Cherry-CJQ/AI-Travel-Planner/releases) 下载 `ai-travel-planner.tar` (约24.8MB)
+   - 直接下载根目录下的Docker镜像文件：[ai-travel-planner.tar](./ai-travel-planner.tar) (约24.8MB)
 
 2. **加载镜像**：
    ```bash
