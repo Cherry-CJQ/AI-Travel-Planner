@@ -13,16 +13,19 @@ import {
   message,
   Popconfirm,
   Typography,
-  DatePicker
+  DatePicker,
+  Tabs
 } from 'antd'
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined
+  SearchOutlined,
+  AudioOutlined
 } from '@ant-design/icons'
 import { Expense } from '../../types/database'
 import { useBudgetStore } from '../../stores/budgetStore'
+import VoiceExpense from '../Voice/VoiceExpense'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -37,13 +40,14 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
+  const [activeTab, setActiveTab] = useState('manual')
   
-  const { 
-    expenses, 
-    loading, 
-    addExpense, 
-    updateExpense, 
-    deleteExpense 
+  const {
+    expenses,
+    loading,
+    addExpense,
+    updateExpense,
+    deleteExpense
   } = useBudgetStore()
 
   // 过滤支出记录
@@ -111,6 +115,27 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
     setIsModalVisible(false)
     setEditingExpense(null)
     form.resetFields()
+  }
+
+  // 处理语音记账添加
+  const handleVoiceExpenseAdd = async (amount: number, category: string, description?: string) => {
+    try {
+      // 确保category是有效的类型
+      const validCategories = ['TRANSPORT', 'ACCOMMODATION', 'FOOD', 'SIGHTSEEING', 'SHOPPING', 'OTHER'] as const
+      const validCategory = validCategories.includes(category as any) ? category as 'TRANSPORT' | 'ACCOMMODATION' | 'FOOD' | 'SIGHTSEEING' | 'SHOPPING' | 'OTHER' : 'OTHER'
+      
+      await addExpense({
+        trip_id: tripId,
+        amount,
+        category: validCategory,
+        description
+      })
+      message.success('语音记账成功！')
+      // 切换到手动记账标签页显示新记录
+      setActiveTab('manual')
+    } catch (error: any) {
+      message.error(error.message || '语音记账失败')
+    }
   }
 
   // 获取类别名称
@@ -225,29 +250,58 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
               icon={<PlusOutlined />}
               onClick={showAddModal}
             >
-              添加支出
+              手动添加
             </Button>
           </Space>
         </div>
       </Card>
 
-      {/* 支出表格 */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={filteredExpenses}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) =>
-              `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
-          }}
-          scroll={{ x: 800 }}
-        />
-      </Card>
+      {/* 记账方式标签页 */}
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'manual',
+            label: '手动记账',
+            children: (
+              <Card>
+                <Table
+                  columns={columns}
+                  dataSource={filteredExpenses}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showQuickJumper: true,
+                    showTotal: (total, range) =>
+                      `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
+                  }}
+                  scroll={{ x: 800 }}
+                />
+              </Card>
+            )
+          },
+          {
+            key: 'voice',
+            label: (
+              <span>
+                <AudioOutlined style={{ marginRight: 8 }} />
+                语音记账
+              </span>
+            ),
+            children: (
+              <Card>
+                <VoiceExpense
+                  onExpenseAdd={handleVoiceExpenseAdd}
+                  tripId={tripId}
+                />
+              </Card>
+            )
+          }
+        ]}
+      />
 
       {/* 添加/编辑模态框 */}
       <Modal

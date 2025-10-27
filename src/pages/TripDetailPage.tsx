@@ -35,7 +35,7 @@ const TripDetailPage: React.FC = () => {
   
   const [trip, setTrip] = useState<Trip | null>(null)
   const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([])
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('budget')
   const [selectedDay, setSelectedDay] = useState<number>(1)
   const [highlightedActivity, setHighlightedActivity] = useState<{ dayNumber: number; activityIndex: number } | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(66) // 默认左侧占66%
