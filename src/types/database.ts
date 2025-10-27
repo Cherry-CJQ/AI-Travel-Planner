@@ -65,7 +65,6 @@ export interface UserSettings {
   id: string
   user_id: string
   llm_api_key?: string
-  llm_model?: string
   voice_api_key?: string
   map_api_key?: string
   created_at: string

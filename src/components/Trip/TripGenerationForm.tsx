@@ -81,7 +81,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
       // 初始化LLM服务（如果配置了API Key）
       if (userSettings?.llm_api_key) {
         initializeLLMService(userSettings.llm_api_key, {
-          modelName: userSettings.llm_model || 'qwen-plus',
+          modelName: import.meta.env.VITE_LLM_MODEL || 'qwen-plus', // 使用环境变量中的模型名称
           useProxy: true
         })
       }
@@ -193,7 +193,7 @@ export const TripGenerationForm: React.FC<TripGenerationFormProps> = ({ onSucces
       }}
       extra={
         !isAPIKeyConfigured && (
-          <Tag color="orange">请先在设置页面配置API Key</Tag>
+          <Tag color="orange">请先在【API设置】页面配置API Key</Tag>
         )
       }
     >

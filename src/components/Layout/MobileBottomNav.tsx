@@ -1,9 +1,9 @@
 import React from 'react'
 import { Menu } from 'antd'
-import { 
-  HomeOutlined, 
-  CompassOutlined, 
-  SettingOutlined,
+import {
+  HomeOutlined,
+  CompassOutlined,
+  UserOutlined,
   PlusOutlined
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -29,9 +29,9 @@ const MobileBottomNav: React.FC = () => {
       label: '新建',
     },
     {
-      key: '/settings',
-      icon: <SettingOutlined />,
-      label: '设置',
+      key: '/account',
+      icon: <UserOutlined />,
+      label: '账户',
     },
   ]
 

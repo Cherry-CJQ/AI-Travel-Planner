@@ -1,6 +1,6 @@
 import React from 'react'
 import { Button, Space, Typography, Alert } from 'antd'
-import { AudioOutlined, AudioMutedOutlined } from '@ant-design/icons'
+import { AudioOutlined, AudioMutedOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useVoiceRecognition } from '../../services/voiceRecognition'
 
 const { Text } = Typography
@@ -11,8 +11,8 @@ interface VoiceInputProps {
   disabled?: boolean
 }
 
-const VoiceInput: React.FC<VoiceInputProps> = ({ 
-  onTranscriptChange, 
+const VoiceInput: React.FC<VoiceInputProps> = ({
+  onTranscriptChange,
   placeholder = "点击麦克风开始说话...",
   disabled = false
 }) => {
@@ -22,6 +22,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     error,
     startRecording,
     stopRecording,
+    clearTranscript,
     isSupported
   } = useVoiceRecognition()
 
@@ -73,9 +74,20 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
             {isRecording ? '停止录音' : '开始录音'}
           </Button>
           
+          {transcript && (
+            <Button
+              type="default"
+              icon={<DeleteOutlined />}
+              onClick={clearTranscript}
+              disabled={disabled || isRecording}
+            >
+              清除内容
+            </Button>
+          )}
+          
           {isRecording && (
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div 
+              <div
                 style={{
                   width: 8,
                   height: 8,
@@ -83,7 +95,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
                   backgroundColor: '#ff4d4f',
                   marginRight: 8,
                   animation: 'pulse 1.5s infinite'
-                }} 
+                }}
               />
               <Text type="secondary">录音中...</Text>
             </div>
@@ -133,7 +145,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
       {/* 使用提示 */}
       <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
         <Text type="secondary">
-          提示：点击麦克风按钮开始说话，系统会自动将语音转换为文字
+          提示：点击麦克风按钮开始录音，再次点击停止录音，系统会将语音转换为文字。点击清除按钮可清空识别内容。
         </Text>
       </div>
     </div>

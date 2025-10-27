@@ -49,9 +49,17 @@ export const TripMap: React.FC<TripMapProps> = ({
         }
 
         // 获取目的地坐标
-        const destinationLocation = await mapService.geocode(destination)
+        let destinationLocation = await mapService.geocode(destination)
+        
+        // 如果目的地坐标获取失败，使用默认的中国中心点
         if (!destinationLocation) {
-          throw new Error(`无法找到目的地: ${destination}`)
+          console.warn(`无法找到目的地: ${destination}，使用默认中国视图`)
+          destinationLocation = {
+            lat: 39.9042,  // 北京纬度
+            lng: 116.4074, // 北京经度
+            name: destination,
+            address: '中国'
+          }
         }
 
         // 初始化地图
@@ -346,7 +354,16 @@ export const TripMap: React.FC<TripMapProps> = ({
         } else {
           console.warn('无法获取活动地点的坐标:', locationName)
           // 使用目的地作为备用位置
-          const destLocation = await mapService.geocode(destination)
+          let destLocation = await mapService.geocode(destination)
+          if (!destLocation) {
+            // 如果目的地坐标获取失败，使用默认的中国中心点
+            destLocation = {
+              lat: 39.9042,  // 北京纬度
+              lng: 116.4074, // 北京经度
+              name: destination,
+              address: '中国'
+            }
+          }
           if (destLocation && mapInstanceRef.current) {
             mapInstanceRef.current.setCenter([destLocation.lng, destLocation.lat])
             mapInstanceRef.current.setZoom(12)
@@ -356,7 +373,16 @@ export const TripMap: React.FC<TripMapProps> = ({
       } catch (error) {
         console.warn('定位活动地点失败:', error)
         // 使用目的地作为备用位置
-        const destLocation = await mapService.geocode(destination)
+        let destLocation = await mapService.geocode(destination)
+        if (!destLocation) {
+          // 如果目的地坐标获取失败，使用默认的中国中心点
+          destLocation = {
+            lat: 39.9042,  // 北京纬度
+            lng: 116.4074, // 北京经度
+            name: destination,
+            address: '中国'
+          }
+        }
         if (destLocation && mapInstanceRef.current) {
           mapInstanceRef.current.setCenter([destLocation.lng, destLocation.lat])
           mapInstanceRef.current.setZoom(12)

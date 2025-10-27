@@ -44,7 +44,7 @@ export const useTripStore = create<TripStore>((set, get) => ({
       if (userSettings?.llm_api_key) {
         // 初始化LLM服务，启用代理并使用用户选择的模型
         initializeLLMService(userSettings.llm_api_key, {
-          modelName: userSettings.llm_model || 'qwen-plus',
+          modelName: import.meta.env.VITE_LLM_MODEL || 'qwen-plus', // 使用环境变量中的模型名称
           useProxy: true
         })
       } else {

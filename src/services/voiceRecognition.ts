@@ -44,11 +44,12 @@ class VoiceRecognitionService {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       this.recognition = new SpeechRecognition()
       
-      this.recognition.continuous = false
+      this.recognition.continuous = true  // 使用连续模式
       this.recognition.interimResults = true
       this.recognition.lang = 'zh-CN'
 
       this.recognition.onresult = (event: any) => {
+        // 获取最新的结果
         const result = event.results[event.results.length - 1]
         const transcript = result[0].transcript
         const confidence = result[0].confidence
@@ -172,14 +173,14 @@ export const useVoiceRecognition = () => {
 
   const startRecording = useCallback(() => {
     setError(null)
-    setTranscript('')
+    // 开始录音时不清空之前的识别结果
     setIsRecording(true)
 
     voiceRecognitionService.startRecording(
       (result) => {
-        setTranscript(result.text)
+        // 只累积最终结果，不累积临时结果
         if (result.isFinal) {
-          setIsRecording(false)
+          setTranscript(prev => prev + (prev ? ' ' : '') + result.text)
         }
       },
       (errorMsg) => {
@@ -192,6 +193,11 @@ export const useVoiceRecognition = () => {
   const stopRecording = useCallback(() => {
     voiceRecognitionService.stopRecording()
     setIsRecording(false)
+  }, [])
+
+  const clearTranscript = useCallback(() => {
+    setTranscript('')
+    setError(null)
   }, [])
 
   useEffect(() => {
@@ -209,6 +215,7 @@ export const useVoiceRecognition = () => {
     error,
     startRecording,
     stopRecording,
+    clearTranscript,
     isSupported: voiceRecognitionService.isSupported()
   }
 }

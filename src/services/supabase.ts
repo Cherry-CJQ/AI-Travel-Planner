@@ -22,6 +22,137 @@ import { localAuthService } from './localAuthService'
 // 用户认证相关操作 - 使用本地认证服务
 export const authService = localAuthService
 
+// 用户账户管理操作
+export const userAccountService = {
+  // 删除用户账户及其所有数据
+  async deleteUserAccount(userId: string) {
+    try {
+      // 首先获取用户的所有行程ID
+      const { data: trips, error: tripsQueryError } = await supabase
+        .from(TABLES.TRIPS)
+        .select('id')
+        .eq('user_id', userId)
+
+      if (tripsQueryError) {
+        return { error: tripsQueryError }
+      }
+
+      const tripIds = trips?.map(trip => trip.id) || []
+
+      // 删除相关数据（按依赖关系顺序）
+      if (tripIds.length > 0) {
+        // 删除费用记录
+        const { error: expensesError } = await supabase
+          .from(TABLES.EXPENSES)
+          .delete()
+          .in('trip_id', tripIds)
+
+        // 删除每日计划
+        const { error: dailyPlansError } = await supabase
+          .from(TABLES.DAILY_PLANS)
+          .delete()
+          .in('trip_id', tripIds)
+
+        if (expensesError || dailyPlansError) {
+          return { error: expensesError || dailyPlansError }
+        }
+      }
+
+      // 删除行程
+      const { error: tripsError } = await supabase
+        .from(TABLES.TRIPS)
+        .delete()
+        .eq('user_id', userId)
+
+      // 删除用户设置
+      const { error: settingsError } = await supabase
+        .from(TABLES.USER_SETTINGS)
+        .delete()
+        .eq('user_id', userId)
+
+      // 删除用户
+      const { error: userError } = await supabase
+        .from(TABLES.USERS)
+        .delete()
+        .eq('id', userId)
+
+      // 如果有任何错误，返回第一个错误
+      const errors = [tripsError, settingsError, userError]
+      const firstError = errors.find(error => error)
+      
+      if (firstError) {
+        return { error: firstError }
+      }
+
+      return { error: null }
+    } catch (error: any) {
+      return { error }
+    }
+  },
+
+  // 更新用户信息
+  async updateUserInfo(userId: string, updates: {
+    name?: string
+    email?: string
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.USERS)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+      
+      return { data, error }
+    } catch (error: any) {
+      return { data: null, error }
+    }
+  },
+
+  // 修改密码
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    try {
+      // 首先验证当前密码
+      const { data: user, error: userError } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (userError || !user) {
+        return { data: null, error: new Error('用户不存在') }
+      }
+
+      // 验证当前密码
+      const bcrypt = await import('bcryptjs')
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash)
+      if (!isCurrentPasswordValid) {
+        return { data: null, error: new Error('当前密码错误') }
+      }
+
+      // 加密新密码
+      const saltRounds = 10
+      const newPasswordHash = await bcrypt.hash(newPassword, saltRounds)
+
+      // 更新密码
+      const { data, error } = await supabase
+        .from(TABLES.USERS)
+        .update({
+          password_hash: newPasswordHash,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+      
+      return { data, error }
+    } catch (error: any) {
+      return { data: null, error }
+    }
+  }
+}
+
 // 行程数据操作
 export const tripService = {
   // 获取用户的所有行程

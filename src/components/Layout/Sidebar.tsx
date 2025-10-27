@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { Layout, Menu, Button, Tooltip } from 'antd'
-import { 
-  HomeOutlined, 
-  CompassOutlined, 
+import {
+  HomeOutlined,
+  CompassOutlined,
   SettingOutlined,
+  UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined
 } from '@ant-design/icons'
@@ -14,12 +15,14 @@ const { Sider } = Layout
 interface SidebarProps {
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
+  width?: number
+  onWidthChange?: (width: number) => void
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse, width = 200, onWidthChange }) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [siderWidth, setSiderWidth] = useState(200)
+  const [siderWidth, setSiderWidth] = useState(width)
 
   const menuItems = [
     {
@@ -33,9 +36,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
       label: '我的行程',
     },
     {
+      key: '/account',
+      icon: <UserOutlined />,
+      label: '账户管理',
+    },
+    {
       key: '/settings',
       icon: <SettingOutlined />,
-      label: '设置',
+      label: 'API设置',
     },
   ]
 
@@ -53,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
         background: '#fff',
         borderRight: '1px solid #f0f0f0',
         position: 'relative',
+        height: '100vh', // 确保侧边栏铺满整个屏幕高度
       }}
       breakpoint="lg"
       collapsedWidth="0"
@@ -72,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
         items={menuItems}
         onClick={({ key }) => navigate(key)}
         style={{
-          height: '100%',
+          height: '100vh', // 菜单铺满整个侧边栏高度
           borderRight: 0,
           paddingTop: '16px',
         }}
@@ -80,14 +89,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
       
       {/* 自定义折叠按钮 */}
       <Tooltip title={collapsed ? '展开侧边栏' : '折叠侧边栏'} placement="right">
-        <Button 
-          type="text" 
+        <Button
+          type="text"
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           style={{
-            position: 'absolute',
-            top: 12,
-            right: -36,
-            zIndex: 1000,
+            position: 'fixed',
+            top: 76, // 顶栏高度64px + 12px间距
+            left: collapsed ? 12 : siderWidth - 16, // 按钮在侧边栏右侧边缘
+            zIndex: 1001,
             color: '#1890ff',
             background: '#fff',
             border: '1px solid #f0f0f0',
@@ -97,6 +106,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            transition: 'left 0.2s ease', // 添加平滑过渡效果
+            pointerEvents: 'auto', // 确保按钮可点击
           }}
           onClick={() => handleCollapse(!collapsed)}
         />
@@ -124,6 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onCollapse }) => {
               const deltaX = moveEvent.clientX - startX
               const newWidth = Math.max(150, Math.min(400, startWidth + deltaX))
               setSiderWidth(newWidth)
+              onWidthChange?.(newWidth)
             }
             
             const handleMouseUp = () => {

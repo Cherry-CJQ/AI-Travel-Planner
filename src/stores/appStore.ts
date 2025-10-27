@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { User, UserSettings, Trip, AppState } from '../types/database'
-import { authService, userSettingsService } from '../services/supabase'
+import { authService, userSettingsService, userAccountService, supabase, TABLES } from '../services/supabase'
+import { initializeLLMService } from '../services/llmService'
 
 interface AppStore extends AppState {
   // 认证相关
@@ -10,6 +11,11 @@ interface AppStore extends AppState {
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
+  deleteAccount: () => Promise<void>
+  updateUserInfo: (updates: { name?: string; email?: string }) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  validateAuth: () => Promise<void>
+  initializeLLMService: () => Promise<void>
   
   // 用户设置
   setUserSettings: (settings: UserSettings | null) => void
@@ -39,6 +45,30 @@ export const useAppStore = create<AppStore>()(
       setUser: (user) => set({ user }),
       setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
       
+      // 验证当前认证状态
+      validateAuth: async () => {
+        const { user } = get()
+        if (!user) {
+          set({ isAuthenticated: false })
+          return
+        }
+        
+        try {
+          // 对于本地认证，我们只需要检查用户是否仍然存在于数据库中
+          const { data: userData, error } = await supabase
+            .from(TABLES.USERS)
+            .select('id')
+            .eq('id', user.id)
+            .single()
+            
+          if (error || !userData) {
+            set({ isAuthenticated: false, user: null })
+          }
+        } catch (error) {
+          set({ isAuthenticated: false, user: null })
+        }
+      },
+      
       login: async (email: string, password: string) => {
         set({ loading: true, error: null })
         try {
@@ -46,7 +76,7 @@ export const useAppStore = create<AppStore>()(
           
           if (error) {
             set({ error: error.message, loading: false })
-            return
+            throw new Error(error.message) // 抛出异常让调用方捕获
           }
           
           if (data && data.user) {
@@ -68,10 +98,21 @@ export const useAppStore = create<AppStore>()(
             const { data: settings } = await userSettingsService.getUserSettings(user.id)
             if (settings) {
               set({ userSettings: settings })
+              
+              // 如果用户有LLM API Key，初始化LLM服务
+              if (settings.llm_api_key) {
+                initializeLLMService(settings.llm_api_key, {
+                  useProxy: import.meta.env.VITE_USE_PROXY === 'true'
+                })
+              }
             }
+          } else {
+            set({ error: '登录失败，请重试', loading: false })
+            throw new Error('登录失败，请重试')
           }
         } catch (error: any) {
           set({ error: error.message, loading: false })
+          throw error // 重新抛出异常
         }
       },
 
@@ -121,6 +162,99 @@ export const useAppStore = create<AppStore>()(
         }
       },
 
+      // 删除账户
+      deleteAccount: async () => {
+        const { user } = get()
+        if (!user) return
+        
+        set({ loading: true })
+        try {
+          const { error } = await userAccountService.deleteUserAccount(user.id)
+          
+          if (error) {
+            set({ error: error.message, loading: false })
+            return
+          }
+          
+          // 清除所有状态
+          set({
+            user: null,
+            isAuthenticated: false,
+            currentTrip: null,
+            userSettings: null,
+            loading: false
+          })
+        } catch (error: any) {
+          set({ error: error.message, loading: false })
+        }
+      },
+
+      // 更新用户信息
+      updateUserInfo: async (updates) => {
+        const { user } = get()
+        if (!user) return
+        
+        set({ loading: true })
+        try {
+          const { data, error } = await userAccountService.updateUserInfo(user.id, updates)
+          
+          if (error) {
+            set({ error: error.message, loading: false })
+            return
+          }
+          
+          if (data && data[0]) {
+            // 更新本地用户状态
+            set({
+              user: { ...user, ...data[0] },
+              loading: false
+            })
+            return
+          }
+          
+          set({ loading: false })
+        } catch (error: any) {
+          set({ error: error.message, loading: false })
+        }
+      },
+
+      // 修改密码
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        const { user } = get()
+        if (!user) return
+        
+        set({ loading: true })
+        try {
+          const { data, error } = await userAccountService.changePassword(user.id, currentPassword, newPassword)
+          
+          if (error) {
+            set({ error: error.message, loading: false })
+            return
+          }
+          
+          if (data && data[0]) {
+            set({ loading: false })
+            return
+          }
+          
+          set({ loading: false })
+        } catch (error: any) {
+          set({ error: error.message, loading: false })
+        }
+      },
+
+      // 初始化LLM服务
+      initializeLLMService: async () => {
+        const { userSettings } = get()
+        
+        if (userSettings?.llm_api_key) {
+          console.log('自动初始化LLM服务')
+          initializeLLMService(userSettings.llm_api_key, {
+            useProxy: import.meta.env.VITE_USE_PROXY === 'true'
+          })
+        }
+      },
+
       // 用户设置方法
       setUserSettings: (settings) => set({ userSettings: settings }),
       
@@ -136,9 +270,16 @@ export const useAppStore = create<AppStore>()(
             set({ error: error.message, loading: false })
             return
           }
-          
+
           if (data) {
             set({ userSettings: data[0], loading: false })
+            
+            // 如果更新了LLM API Key，重新初始化LLM服务
+            if (settings.llm_api_key) {
+              initializeLLMService(settings.llm_api_key, {
+                useProxy: import.meta.env.VITE_USE_PROXY === 'true'
+              })
+            }
           }
         } catch (error: any) {
           set({ error: error.message, loading: false })

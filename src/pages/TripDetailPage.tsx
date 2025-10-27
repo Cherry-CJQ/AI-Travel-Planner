@@ -49,7 +49,8 @@ const TripDetailPage: React.FC = () => {
   const loadTripData = async () => {
     try {
       // 加载用户行程列表并找到对应的行程
-      const userTrips = await useTripStore.getState().loadUserTrips()
+      const { loadUserTrips } = useTripStore.getState()
+      const userTrips = await loadUserTrips()
       console.log('加载的用户行程列表:', userTrips)
       
       const foundTrip = userTrips.find(t => t.id === tripId)

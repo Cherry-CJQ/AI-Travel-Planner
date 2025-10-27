@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react'
-import { Typography, Card, Form, Input, Button, Space, Alert, message, Select } from 'antd'
+import { Typography, Card, Form, Input, Button, Space, Alert, message } from 'antd'
 import { useAppStore } from '../stores/appStore'
 
 const { Title, Paragraph } = Typography
-const { Option } = Select
 
 const SettingsPage: React.FC = () => {
   const [form] = Form.useForm()
@@ -13,7 +12,6 @@ const SettingsPage: React.FC = () => {
     if (userSettings) {
       form.setFieldsValue({
         llmApiKey: userSettings.llm_api_key || '',
-        llmModel: userSettings.llm_model || 'qwen-plus',
         voiceApiKey: userSettings.voice_api_key || '',
         mapApiKey: userSettings.map_api_key || ''
       })
@@ -22,14 +20,12 @@ const SettingsPage: React.FC = () => {
 
   const onFinish = async (values: {
     llmApiKey: string
-    llmModel?: string
     voiceApiKey?: string
     mapApiKey?: string
   }) => {
     try {
       await updateUserSettings({
         llm_api_key: values.llmApiKey,
-        llm_model: values.llmModel || undefined,
         voice_api_key: values.voiceApiKey || undefined,
         map_api_key: values.mapApiKey || undefined
       })
@@ -44,7 +40,6 @@ const SettingsPage: React.FC = () => {
     if (userSettings) {
       form.setFieldsValue({
         llmApiKey: userSettings.llm_api_key || '',
-        llmModel: userSettings.llm_model || 'qwen-turbo',
         voiceApiKey: userSettings.voice_api_key || '',
         mapApiKey: userSettings.map_api_key || ''
       })
@@ -82,18 +77,6 @@ const SettingsPage: React.FC = () => {
             <Input.Password placeholder="请输入您的阿里云百炼API密钥" />
           </Form.Item>
 
-          <Form.Item
-            label="AI模型选择"
-            name="llmModel"
-            initialValue="qwen-turbo"
-            extra="qwen-turbo：响应更快，适合快速生成；qwen-plus：效果更好，但响应稍慢"
-          >
-            <Select placeholder="选择AI模型">
-              <Option value="qwen-turbo">Qwen-Turbo（推荐，响应快）</Option>
-              <Option value="qwen-plus">Qwen-Plus（效果更好）</Option>
-              <Option value="qwen-max">Qwen-Max（效果最佳）</Option>
-            </Select>
-          </Form.Item>
 
           <Form.Item
             label="科大讯飞语音识别 API Key (可选)"

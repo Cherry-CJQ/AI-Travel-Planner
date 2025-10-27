@@ -811,6 +811,314 @@ ${dateInfo}
     console.log('本地解析结果:', result)
     return result
   }
+
+  // 解析语音记账信息
+  async parseExpenseFromText(text: string): Promise<{
+    amount: number
+    category: string
+    description?: string
+  } | null> {
+    // 如果没有配置API Key，使用本地解析
+    if (!this.apiKey) {
+      console.log('未配置API Key，使用本地解析')
+      console.log('当前API Key状态:', this.apiKey ? '已配置' : '未配置')
+      return this.parseExpenseLocally(text)
+    }
+
+    const prompt = `你是一个智能记账助手。请从用户语音输入中提取费用信息。
+
+用户输入："${text}"
+
+请仔细分析用户输入，提取以下信息：
+1. 金额：数字形式的金额，必须提取到
+2. 类别：根据描述判断费用类别，必须是以下之一：
+   - TRANSPORT（交通：打车、打的、叫车、网约车、地铁、公交、出租车、机票、火车、高铁、动车、汽车、巴士、专车、滴滴、uber、的士、船票、轮渡、停车费、油费、过路费、租车、共享单车、自行车、摩托车等）
+   - ACCOMMODATION（住宿：酒店、旅馆、民宿、宾馆、客栈、青旅、公寓、房间、住宿费、房费、酒店费、旅馆费、民宿费等）
+   - FOOD（餐饮：吃饭、餐饮、餐厅、美食、早餐、午餐、晚餐、小吃、零食、饮料、咖啡、茶、奶茶、水果、超市、买菜、食材、外卖、快餐、火锅、烧烤、自助餐、西餐、中餐、日料、韩餐、面包、蛋糕、甜点、冰淇淋、酒水、酒吧等）
+   - SIGHTSEEING（景点：门票、景点、游览、观光、博物馆、公园、动物园、植物园、游乐园、海洋馆、展览、演出、电影、剧院、音乐会、演唱会、温泉、滑雪、登山、徒步、旅游、旅行、参观、门票费等）
+   - SHOPPING（购物：购物、买、购买、商品、纪念品、礼物、衣服、鞋子、包包、化妆品、护肤品、首饰、手表、电子产品、手机、电脑、相机、家电、家具、日用品、百货、商场、超市、便利店、网购、淘宝、京东、拼多多等）
+   - OTHER（其他：无法明确分类的费用，如其他、杂项、费用、支出、花费、消费等）
+3. 描述：简要描述费用内容
+
+重要提示：
+- 金额必须提取到，如果找不到金额返回null
+- 类别判断要准确，根据实际消费内容分类，不要只看关键词，要理解上下文
+- 描述要简洁明了，保留关键信息
+- 支持中文数字转换：五十=50，六十=60，七十=70，八十=80，九十=90，一百=100，两百=200，三百=300等
+- 如果用户说"打车花了五十"，金额应该是50，类别是TRANSPORT
+- 如果用户说"吃饭消费120元在海底捞"，金额是120，类别是FOOD
+- 如果用户说"买了80元纪念品"，金额是80，类别是SHOPPING
+- 如果用户说"门票支出200元"，金额是200，类别是SIGHTSEEING
+- 如果用户说"支付150元住宿费"，金额是150，类别是ACCOMMODATION
+- 如果用户说"付了60块钱地铁票"，金额是60，类别是TRANSPORT
+- 如果用户说"用掉300块买衣服"，金额是300，类别是SHOPPING
+- 如果用户说"交通花了80元打车"，金额是80，类别是TRANSPORT
+
+类别识别规则：
+- 交通类：包含出行、交通工具、车票、打车、打的、叫车、网约车等关键词
+- 住宿类：包含住宿、酒店、旅馆、民宿等关键词
+- 餐饮类：包含吃饭、餐饮、餐厅、美食、小吃等关键词
+- 景点类：包含门票、景点、游览、观光、博物馆等关键词
+- 购物类：包含购物、买、购买、商品、纪念品等关键词
+- 其他类：无法明确分类的费用
+
+特别注意：
+- "打车"、"打的"、"叫车"、"网约车"等关键词必须识别为TRANSPORT类别
+- 不要因为描述简单就归类为OTHER，要根据实际消费内容判断
+
+请以JSON格式返回结果：
+{
+  "amount": 金额,
+  "category": "类别",
+  "description": "描述"
+}
+
+如果无法提取到金额，返回null。
+
+示例1：
+输入："打车花了50元"
+输出：{"amount": 50, "category": "TRANSPORT", "description": "打车"}
+
+示例2：
+输入："打车花了25"
+输出：{"amount": 25, "category": "TRANSPORT", "description": "打车"}
+
+示例3：
+输入："吃饭消费120元在海底捞"
+输出：{"amount": 120, "category": "FOOD", "description": "海底捞吃饭"}
+
+示例4：
+输入："买了80元纪念品"
+输出：{"amount": 80, "category": "SHOPPING", "description": "纪念品"}
+
+示例5：
+输入："门票支出200元"
+输出：{"amount": 200, "category": "SIGHTSEEING", "description": "门票"}
+
+示例6：
+输入："支付150元住宿费"
+输出：{"amount": 150, "category": "ACCOMMODATION", "description": "住宿费"}
+
+示例7：
+输入："付了60块钱地铁票"
+输出：{"amount": 60, "category": "TRANSPORT", "description": "地铁票"}
+
+示例8：
+输入："用掉300块买衣服"
+输出：{"amount": 300, "category": "SHOPPING", "description": "买衣服"}
+
+示例9：
+输入："交通花了80元打车"
+输出：{"amount": 80, "category": "TRANSPORT", "description": "打车"}
+
+示例10：
+输入："打车花了五十"
+输出：{"amount": 50, "category": "TRANSPORT", "description": "打车"}
+
+示例11：
+输入："吃饭花了八十"
+输出：{"amount": 80, "category": "FOOD", "description": "吃饭"}
+
+示例12：
+输入："买纪念品花了一百"
+输出：{"amount": 100, "category": "SHOPPING", "description": "纪念品"}
+
+示例13：
+输入："今天天气不错"
+输出：null
+
+示例14：
+输入："我想去旅游"
+输出：null`
+
+    try {
+      console.log('开始使用大模型解析语音记账:', text)
+      console.log('API Key已配置，调用大模型解析')
+      const response = await this.callBailianAPI(prompt)
+      console.log('LLM解析响应:', response)
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsedData = JSON.parse(jsonMatch[0])
+        console.log('解析后的费用数据:', parsedData)
+        
+        // 验证必需字段
+        if (parsedData && typeof parsedData.amount === 'number' && parsedData.category) {
+          return {
+            amount: parsedData.amount,
+            category: parsedData.category,
+            description: parsedData.description
+          }
+        }
+      } else {
+        console.warn('无法从响应中提取JSON数据，响应内容:', response)
+      }
+    } catch (error) {
+      console.error('大模型解析语音记账失败:', error)
+      console.log('使用本地解析作为备选方案')
+      return this.parseExpenseLocally(text)
+    }
+
+    console.log('大模型解析失败，使用本地解析')
+    return this.parseExpenseLocally(text)
+  }
+
+  // 本地费用解析器
+  private parseExpenseLocally(text: string): {
+    amount: number
+    category: string
+    description?: string
+  } | null {
+    console.log('使用本地解析器解析费用:', text)
+    
+    // 改进的规则解析，覆盖更多用户表达方式
+    const patterns = [
+      // 格式：花了XX元 [类别] [描述]
+      /花了\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：支出XX元 [类别] [描述]
+      /支出\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：消费XX元 [类别] [描述]
+      /消费\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：买了XX元 [类别] [描述]
+      /买了\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:的)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：支付XX元 [类别] [描述]
+      /支付\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：付了XX元 [类别] [描述]
+      /付了\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：用掉XX元 [类别] [描述]
+      /用掉\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 格式：花费XX元 [类别] [描述]
+      /花费\s*(\d+(?:\.\d+)?)\s*元(?:\s*(?:在)?\s*([^，。！？]+))?(?:\s*，?\s*(.+))?/,
+      // 简单格式：XX元 [类别]
+      /(\d+(?:\.\d+)?)\s*元(?:\s*(?:的)?\s*([^，。！？]+))?/,
+      // 格式：XX块钱 [类别]
+      /(\d+(?:\.\d+)?)\s*块钱?(?:\s*(?:的)?\s*([^，。！？]+))?/,
+      // 格式：XX块 [类别]
+      /(\d+(?:\.\d+)?)\s*块(?:\s*(?:的)?\s*([^，。！？]+))?/,
+      // 格式：XX [类别] 花了XX元
+      /([^，。！？]+)\s*花了\s*(\d+(?:\.\d+)?)\s*元/,
+      // 格式：XX [类别] 消费XX元
+      /([^，。！？]+)\s*消费\s*(\d+(?:\.\d+)?)\s*元/,
+      // 新增：更简单的格式，只匹配金额
+      /(\d+(?:\.\d+)?)\s*(?:元|块钱|块)/,
+      // 新增：包含金额和简单描述
+      /(\d+(?:\.\d+)?)\s*(?:元|块钱|块)\s*(.+)/,
+      // 新增：包含金额和类别关键词
+      /(\d+(?:\.\d+)?)\s*(?:元|块钱|块)\s*(?:的)?\s*(.+)/,
+      // 新增：包含金额和"在"字描述
+      /(\d+(?:\.\d+)?)\s*(?:元|块钱|块)\s*(?:在)?\s*(.+)/
+    ]
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern)
+      if (match) {
+        let amount, category, description
+        
+        // 处理不同的匹配组顺序
+        if (pattern.source.includes('花了') || pattern.source.includes('支出') ||
+            pattern.source.includes('消费') || pattern.source.includes('买了') ||
+            pattern.source.includes('支付') || pattern.source.includes('付了') ||
+            pattern.source.includes('用掉') || pattern.source.includes('花费')) {
+          amount = parseFloat(match[1])
+          // 使用整个文本进行类别识别，提高准确性
+          category = this.categorizeExpense(text)
+          description = match[3] || match[2] || undefined
+        } else if (pattern.source.includes('花了') || pattern.source.includes('消费')) {
+          // 处理反向格式：类别 花了XX元
+          category = this.categorizeExpense(match[1])
+          amount = parseFloat(match[2])
+          description = match[1] || undefined
+        } else {
+          // 简单格式
+          amount = parseFloat(match[1])
+          // 使用整个文本进行类别识别，提高准确性
+          category = this.categorizeExpense(text)
+          description = match[2] || undefined
+        }
+
+        console.log('本地解析结果:', { amount, category, description, pattern: pattern.source })
+        return { amount, category, description }
+      }
+    }
+
+    // 后备解析：尝试提取任何数字作为金额
+    const fallbackAmountMatch = text.match(/(\d+(?:\.\d+)?)/)
+    if (fallbackAmountMatch) {
+      const amount = parseFloat(fallbackAmountMatch[1])
+      console.log('后备解析：找到金额', amount)
+      return { amount, category: 'OTHER', description: text }
+    }
+
+    return null
+  }
+
+  // 分类费用 - 增强版
+  private categorizeExpense(text: string): string {
+    const categories: { [key: string]: string[] } = {
+      TRANSPORT: [
+        '打车', '打的', '叫车', '网约车', '交通', '地铁', '公交', '出租车', '机票', '火车', '高铁', '动车',
+        '汽车', '巴士', '专车', '滴滴', 'uber', '的士', '船票', '轮渡', '停车费',
+        '油费', '过路费', '租车', '共享单车', '自行车', '摩托车'
+      ],
+      ACCOMMODATION: [
+        '住宿', '酒店', '旅馆', '民宿', '宾馆', '客栈', '青旅', '公寓', '房间',
+        '住宿费', '房费', '酒店费', '旅馆费', '民宿费'
+      ],
+      FOOD: [
+        '吃饭', '餐饮', '餐厅', '美食', '早餐', '午餐', '晚餐', '小吃', '零食',
+        '饮料', '咖啡', '茶', '奶茶', '水果', '超市', '买菜', '食材', '外卖',
+        '快餐', '火锅', '烧烤', '自助餐', '西餐', '中餐', '日料', '韩餐',
+        '面包', '蛋糕', '甜点', '冰淇淋', '酒水', '酒吧'
+      ],
+      SIGHTSEEING: [
+        '门票', '景点', '游览', '观光', '博物馆', '公园', '动物园', '植物园',
+        '游乐园', '海洋馆', '展览', '演出', '电影', '剧院', '音乐会', '演唱会',
+        '温泉', '滑雪', '登山', '徒步', '旅游', '旅行', '参观', '门票费'
+      ],
+      SHOPPING: [
+        '购物', '买', '购买', '商品', '纪念品', '礼物', '衣服', '鞋子', '包包',
+        '化妆品', '护肤品', '首饰', '手表', '电子产品', '手机', '电脑', '相机',
+        '家电', '家具', '日用品', '百货', '商场', '超市', '便利店', '网购',
+        '淘宝', '京东', '拼多多', '衣服', '鞋子', '包包', '化妆品'
+      ],
+      OTHER: ['其他', '杂项', '费用', '支出', '花费', '消费']
+    }
+
+    // 将文本转换为小写进行匹配
+    const lowerText = text.toLowerCase()
+    
+    // 计算每个类别的匹配分数
+    const scores: { [key: string]: number } = {}
+    
+    for (const [category, keywords] of Object.entries(categories)) {
+      let score = 0
+      for (const keyword of keywords) {
+        if (lowerText.includes(keyword.toLowerCase())) {
+          score += 1
+          // 如果关键词完全匹配，增加权重
+          if (lowerText === keyword.toLowerCase()) {
+            score += 2
+          }
+        }
+      }
+      scores[category] = score
+    }
+    
+    // 找到最高分数的类别
+    let bestCategory = 'OTHER'
+    let highestScore = 0
+    
+    for (const [category, score] of Object.entries(scores)) {
+      if (score > highestScore) {
+        highestScore = score
+        bestCategory = category
+      }
+    }
+    
+    console.log('类别识别结果:', { text, scores, bestCategory })
+    
+    return bestCategory
+  }
 }
 
 // 创建全局LLM服务实例
