@@ -45,7 +45,12 @@ export const TripMap: React.FC<TripMapProps> = ({
 
         // 等待高德地图API加载
         if (!window.AMap) {
-          await loadAMapScript()
+          try {
+            await loadAMapScript()
+          } catch (scriptError) {
+            console.error('高德地图脚本加载失败:', scriptError)
+            throw new Error('高德地图API加载失败，请检查网络连接和API密钥配置')
+          }
         }
 
         // 获取目的地坐标
@@ -62,11 +67,31 @@ export const TripMap: React.FC<TripMapProps> = ({
           }
         }
 
-        // 初始化地图
+        // 初始化地图 - 设置中国边界限制
         mapInstanceRef.current = new window.AMap.Map(mapRef.current, {
           zoom: 12,
           center: [destinationLocation.lng, destinationLocation.lat],
-          mapStyle: 'amap://styles/normal'
+          mapStyle: 'amap://styles/normal',
+          // 设置严格的中国边界限制
+          resizeEnable: true,
+          rotateEnable: false,
+          pitchEnable: false,
+          // 限制地图显示范围为中国
+          limitBounds: new window.AMap.Bounds(
+            new window.AMap.LngLat(73, 18), // 中国西南角
+            new window.AMap.LngLat(135, 54)  // 中国东北角
+          )
+        })
+
+        // 添加边界检查，防止地图漂移到非洲
+        mapInstanceRef.current.on('moveend', () => {
+          const center = mapInstanceRef.current.getCenter()
+          // 如果地图中心超出中国范围，强制拉回
+          if (center.lng < 73 || center.lng > 135 || center.lat < 18 || center.lat > 54) {
+            console.warn('地图超出中国范围，强制拉回中心位置')
+            mapInstanceRef.current.setCenter([104.1954, 35.8617])
+            mapInstanceRef.current.setZoom(4)
+          }
         })
 
         // 添加目的地标记
@@ -200,11 +225,37 @@ export const TripMap: React.FC<TripMapProps> = ({
       // Web端(JS API)需要单独的Key，优先使用JS API专用Key，如果没有则使用通用Key
       // Web端(JS API)有Key和Secret，但JS加载时只需要Key
       const jsApiKey = import.meta.env.VITE_AMAP_JS_API_KEY || import.meta.env.VITE_AMAP_API_KEY || ''
+      
+      // 检查API密钥是否配置
+      if (!jsApiKey) {
+        reject(new Error('高德地图API密钥未配置，请在环境变量中配置VITE_AMAP_JS_API_KEY或VITE_AMAP_API_KEY'))
+        return
+      }
+      
       script.src = `https://webapi.amap.com/maps?v=2.0&key=${jsApiKey}&plugin=AMap.Geocoder`
       script.async = true
       
-      script.onload = () => resolve()
-      script.onerror = () => reject(new Error('高德地图脚本加载失败'))
+      // 设置超时处理
+      const timeoutId = setTimeout(() => {
+        reject(new Error('高德地图脚本加载超时'))
+      }, 10000) // 10秒超时
+      
+      script.onload = () => {
+        clearTimeout(timeoutId)
+        // 额外检查AMap对象是否真正可用
+        setTimeout(() => {
+          if (window.AMap) {
+            resolve()
+          } else {
+            reject(new Error('高德地图API对象未正确初始化'))
+          }
+        }, 100)
+      }
+      
+      script.onerror = () => {
+        clearTimeout(timeoutId)
+        reject(new Error('高德地图脚本加载失败，请检查网络连接和API密钥'))
+      }
       
       document.head.appendChild(script)
     })

@@ -286,11 +286,26 @@ class MapService {
       
       if (data.geocodes && data.geocodes.length > 0) {
         const geocode = data.geocodes[0]
-        return {
-          lat: parseFloat(geocode.location.split(',')[1]),
-          lng: parseFloat(geocode.location.split(',')[0]),
-          name: address,
-          address: geocode.formatted_address
+        const lat = parseFloat(geocode.location.split(',')[1])
+        const lng = parseFloat(geocode.location.split(',')[0])
+        
+        // 验证坐标是否在中国范围内
+        if (lng >= 73 && lng <= 135 && lat >= 18 && lat <= 54) {
+          return {
+            lat: lat,
+            lng: lng,
+            name: address,
+            address: geocode.formatted_address
+          }
+        } else {
+          console.warn(`坐标超出中国范围: ${address} (${lng}, ${lat})`)
+          // 返回中国中心位置作为备选
+          return {
+            lat: 35.8617,
+            lng: 104.1954,
+            name: address,
+            address: '中国'
+          }
         }
       }
       
@@ -301,7 +316,14 @@ class MapService {
       if (error.message && error.message.includes('高德地图API错误')) {
         throw error
       }
-      throw new Error(`地址解析失败: ${error.message || '请检查网络连接和API配置'}`)
+      // 返回中国中心位置作为备选，而不是抛出错误
+      console.warn(`地理编码失败，使用中国中心位置作为备选: ${address}`)
+      return {
+        lat: 35.8617,
+        lng: 104.1954,
+        name: address,
+        address: '中国'
+      }
     }
   }
 

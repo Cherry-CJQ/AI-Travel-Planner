@@ -86,7 +86,32 @@ npm run dev
 
 ## 🐳 Docker部署
 
-### 开发环境
+### 方式一：使用预构建镜像（推荐）
+
+1. **下载Docker镜像文件**：
+   - 从 [Releases页面](https://github.com/Cherry-CJQ/AI-Travel-Planner/releases) 下载最新版本的镜像文件
+
+2. **加载镜像**：
+   ```bash
+   # 如果是.tar文件
+   docker load -i ai-travel-planner-latest.tar
+   
+   # 如果是.tar.gz文件，先解压
+   gunzip ai-travel-planner-latest.tar.gz
+   docker load -i ai-travel-planner-latest.tar
+   ```
+
+3. **运行容器**：
+   ```bash
+   docker run -d -p 3000:80 --name ai-travel-planner ai-travel-planner:latest
+   ```
+
+4. **访问应用**：
+   打开浏览器访问 http://localhost:3000
+
+### 方式二：从源码构建
+
+#### 开发环境
 ```bash
 # 构建开发镜像
 docker build -f Dockerfile.dev -t ai-travel-planner:dev .
@@ -95,7 +120,7 @@ docker build -f Dockerfile.dev -t ai-travel-planner:dev .
 docker run -p 3000:3000 ai-travel-planner:dev
 ```
 
-### 生产环境
+#### 生产环境
 ```bash
 # 使用Docker Compose一键部署
 docker-compose up -d
@@ -104,7 +129,7 @@ docker-compose up -d
 ./deploy.sh deploy
 ```
 
-详细部署说明请参考 [DEPLOYMENT.md](./DEPLOYMENT.md)
+详细部署说明请参考 [DEPLOYMENT.md](./DEPLOYMENT.md) 和 [GITHUB_DOCKER_GUIDE.md](./GITHUB_DOCKER_GUIDE.md)
 
 ## 🧪 测试
 

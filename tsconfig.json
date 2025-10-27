@@ -19,6 +19,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "ignoreDeprecations": "6.0",
 
     /* Path mapping */
     "baseUrl": ".",
@@ -26,7 +27,6 @@
       "@/*": ["src/*"],
       "@components/*": ["src/components/*"],
       "@pages/*": ["src/pages/*"],
-      "@hooks/*": ["src/hooks/*"],
       "@services/*": ["src/services/*"],
       "@stores/*": ["src/stores/*"],
       "@types/*": ["src/types/*"],
