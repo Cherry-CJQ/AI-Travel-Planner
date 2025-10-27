@@ -7,10 +7,10 @@ WORKDIR /app
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production
+# 安装依赖（包含开发依赖用于构建）
+RUN npm ci --legacy-peer-deps
 
-# 复制源代码
+# 复制源代码（排除node_modules）
 COPY . .
 
 # 构建应用
