@@ -44,7 +44,11 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
 
         // 等待高德地图API加载
         if (!window.AMap) {
+          console.log('开始加载高德地图脚本...')
           await loadAMapScript()
+          console.log('高德地图脚本加载完成')
+        } else {
+          console.log('高德地图API已存在')
         }
 
         // 获取所有活动地点
@@ -70,9 +74,9 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
           defaultDestination = allActivities[0].name
         }
         
-        // 如果还是没有目的地，使用北京作为默认
+        // 如果还是没有目的地，使用中国中心位置作为默认
         if (!defaultDestination) {
-          defaultDestination = '北京'
+          defaultDestination = '中国'
         }
 
         // 获取默认目的地的坐标
@@ -82,18 +86,41 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
           if (!centerLocation) {
             throw new Error('地理编码返回空结果')
           }
+          console.log('地理编码成功:', centerLocation)
         } catch (error) {
           console.warn(`无法获取目的地坐标: ${defaultDestination}`, error)
-          // 使用北京的默认坐标作为备选
-          centerLocation = { lat: 39.9042, lng: 116.4074, name: '北京', address: '北京市' }
+          // 使用中国中心位置作为备选，避免显示非洲
+          centerLocation = { lat: 35.8617, lng: 104.1954, name: '中国', address: '中国' }
+          console.log('使用默认中国坐标:', centerLocation)
         }
 
-        // 初始化地图
-        mapInstanceRef.current = new window.AMap.Map(mapRef.current, {
-          zoom: 12,
-          center: [centerLocation.lng, centerLocation.lat],
-          mapStyle: 'amap://styles/normal'
-        })
+        // 初始化地图 - 强制设置中国中心位置
+        try {
+          mapInstanceRef.current = new window.AMap.Map(mapRef.current, {
+            zoom: 3, // 更小的缩放级别，确保显示整个亚洲
+            center: [105, 35], // 中国中心坐标，确保中国位于地图中心
+            mapStyle: 'amap://styles/normal',
+            viewMode: '3D' // 使用3D模式确保正确渲染
+          })
+
+          console.log('地图初始化完成，强制中国中心位置')
+          
+          // 强制设置地图视野范围，确保中国位于显示框中心
+          setTimeout(() => {
+            if (mapInstanceRef.current) {
+              // 设置地图视野为中国范围
+              const bounds = new window.AMap.Bounds(
+                new window.AMap.LngLat(73, 18), // 中国西南角
+                new window.AMap.LngLat(135, 54)  // 中国东北角
+              )
+              mapInstanceRef.current.setBounds(bounds)
+            }
+          }, 100)
+          
+        } catch (mapError: any) {
+          console.error('地图实例化失败:', mapError)
+          throw new Error(`地图实例化失败: ${mapError.message || '请检查API密钥'}`)
+        }
 
         // 添加目的地标记
         addMarker(
@@ -195,25 +222,34 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
               }
             })
 
-            // 自动调整地图视野（包含目的地和所有活动地点）
-            const allLocations = [centerLocation, ...validLocations]
-            if (allLocations.length > 0) {
+            // 只有在有有效地点时才调整地图视野
+            if (validLocations.length > 0) {
+              const allLocations = [centerLocation, ...validLocations]
               // 使用更简单的方法设置地图视野
               const bounds = new window.AMap.Bounds()
               allLocations.forEach(loc => {
                 bounds.extend(new window.AMap.LngLat(loc.lng, loc.lat))
               })
               mapInstanceRef.current.setBounds(bounds)
+            } else {
+              console.log('没有有效地点，保持地图当前视野')
             }
           } catch (error) {
             console.warn('活动地点地理编码失败:', error)
+            // 地理编码失败时，保持地图当前视野不变
+            console.log('地理编码失败，保持地图当前中国视野')
           }
         }
 
         setLoading(false)
       } catch (err: any) {
         console.error('地图初始化失败:', err)
-        setError(err.message || '地图加载失败')
+        // 检查是否是API密钥问题
+        if (err.message && err.message.includes('API')) {
+          setError('地图API配置错误，请检查高德地图API密钥配置')
+        } else {
+          setError(err.message || '地图加载失败，请检查网络连接')
+        }
         setLoading(false)
       }
     }
@@ -436,7 +472,25 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
       <Card>
         <Alert
           message="地图加载失败"
-          description={error}
+          description={
+            <div>
+              <div>{error}</div>
+              <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
+                请检查高德地图API密钥配置，或联系管理员
+              </div>
+              {/* 显示静态地图作为备选 */}
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                <img
+                  src="https://restapi.amap.com/v3/staticmap?location=116.397428,39.90923&zoom=10&size=750*350&key=57b9f63de67579e88d6563270ecb0b05"
+                  alt="静态地图"
+                  style={{ maxWidth: '100%', borderRadius: 6 }}
+                />
+                <div style={{ marginTop: 8, fontSize: '12px', color: '#999' }}>
+                  静态地图预览（功能受限）
+                </div>
+              </div>
+            </div>
+          }
           type="error"
           showIcon
           action={
@@ -460,13 +514,14 @@ export const TripDetailMap: React.FC<TripDetailMapProps> = ({
         </div>
       )}
       
-      <div 
-        ref={mapRef} 
-        style={{ 
-          height: loading ? 0 : 500, 
+      <div
+        ref={mapRef}
+        style={{
+          height: loading ? 0 : 500,
           width: '100%',
           borderRadius: 6,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          minHeight: '400px' // 确保最小高度
         }}
       />
 
