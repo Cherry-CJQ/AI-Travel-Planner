@@ -260,29 +260,39 @@ export const useAppStore = create<AppStore>()(
       
       updateUserSettings: async (settings) => {
         const { user } = get()
-        if (!user) return
+        if (!user) {
+          set({ error: '用户未登录', loading: false })
+          return
+        }
         
-        set({ loading: true })
+        set({ loading: true, error: null })
         try {
           const { data, error } = await userSettingsService.updateUserSettings(user.id, settings)
           
           if (error) {
-            set({ error: error.message, loading: false })
-            return
+            console.error('更新用户设置失败:', error)
+            set({ error: `保存设置失败: ${error.message}`, loading: false })
+            throw new Error(`保存设置失败: ${error.message}`)
           }
 
-          if (data) {
+          if (data && data[0]) {
             set({ userSettings: data[0], loading: false })
             
             // 如果更新了LLM API Key，重新初始化LLM服务
             if (settings.llm_api_key) {
+              console.log('重新初始化LLM服务')
               initializeLLMService(settings.llm_api_key, {
                 useProxy: import.meta.env.VITE_USE_PROXY === 'true'
               })
             }
+          } else {
+            set({ error: '保存设置失败: 未返回数据', loading: false })
+            throw new Error('保存设置失败: 未返回数据')
           }
         } catch (error: any) {
+          console.error('更新用户设置异常:', error)
           set({ error: error.message, loading: false })
+          throw error
         }
       },
 

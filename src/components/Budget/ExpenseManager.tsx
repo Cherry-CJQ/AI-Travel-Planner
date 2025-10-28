@@ -35,12 +35,26 @@ interface ExpenseManagerProps {
   tripId: string
 }
 
+// 获取类别名称
+const getCategoryName = (category: string): string => {
+  const categoryNames: Record<string, string> = {
+    TRANSPORT: '交通',
+    ACCOMMODATION: '住宿',
+    FOOD: '餐饮',
+    SIGHTSEEING: '景点',
+    SHOPPING: '购物',
+    OTHER: '其他'
+  }
+  return categoryNames[category] || category
+}
+
 export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
   const [form] = Form.useForm()
   const [searchKeyword, setSearchKeyword] = useState('')
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [activeTab, setActiveTab] = useState('manual')
+  const [localLoading, setLocalLoading] = useState(false)
   
   const {
     expenses,
@@ -59,6 +73,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
   // 处理添加/编辑支出
   const handleSubmit = async (values: any) => {
     try {
+      setLocalLoading(true)
+      console.log('开始处理支出提交:', values)
       const expenseData = {
         trip_id: tripId,
         amount: values.amount,
@@ -67,18 +83,29 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
       }
 
       if (editingExpense) {
+        console.log('更新支出记录:', editingExpense.id)
         await updateExpense(editingExpense.id, expenseData)
         message.success('支出记录更新成功')
       } else {
+        console.log('添加新支出记录')
         await addExpense(expenseData)
         message.success('支出记录添加成功')
       }
 
+      // 先关闭模态框和重置表单
       setIsModalVisible(false)
       setEditingExpense(null)
       form.resetFields()
+      console.log('支出处理完成，模态框已关闭')
     } catch (error: any) {
+      console.error('处理支出失败:', error)
       message.error(error.message || '操作失败')
+      // 即使出错也要关闭模态框
+      setIsModalVisible(false)
+      setEditingExpense(null)
+      form.resetFields()
+    } finally {
+      setLocalLoading(false)
     }
   }
 
@@ -138,18 +165,6 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
     }
   }
 
-  // 获取类别名称
-  const getCategoryName = (category: string): string => {
-    const categoryNames: Record<string, string> = {
-      TRANSPORT: '交通',
-      ACCOMMODATION: '住宿',
-      FOOD: '餐饮',
-      SIGHTSEEING: '景点',
-      SHOPPING: '购物',
-      OTHER: '其他'
-    }
-    return categoryNames[category] || category
-  }
 
   // 获取类别颜色
   const getCategoryColor = (category: string): string => {
@@ -365,7 +380,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ tripId }) => {
               <Button onClick={handleCancel}>
                 取消
               </Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={localLoading}>
                 {editingExpense ? '更新' : '添加'}
               </Button>
             </Space>

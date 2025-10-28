@@ -312,16 +312,47 @@ export const userSettingsService = {
     voice_api_key?: string
     map_api_key?: string
   }) {
-    const { data, error } = await supabase
-      .from(TABLES.USER_SETTINGS)
-      .upsert({
-        user_id: userId,
-        ...settings,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-    
-    return { data, error }
+    try {
+      // 首先检查用户设置记录是否存在
+      const { data: existingSettings } = await supabase
+        .from(TABLES.USER_SETTINGS)
+        .select('id')
+        .eq('user_id', userId)
+        .single()
+
+      let data, error
+
+      if (existingSettings) {
+        // 更新现有记录
+        const result = await supabase
+          .from(TABLES.USER_SETTINGS)
+          .update({
+            ...settings,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .select()
+        data = result.data
+        error = result.error
+      } else {
+        // 创建新记录
+        const result = await supabase
+          .from(TABLES.USER_SETTINGS)
+          .insert([{
+            user_id: userId,
+            ...settings,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+        data = result.data
+        error = result.error
+      }
+      
+      return { data, error }
+    } catch (error: any) {
+      return { data: null, error }
+    }
   }
 }
 

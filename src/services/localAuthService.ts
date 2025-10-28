@@ -39,13 +39,17 @@ export const localAuthService = {
 
       // 创建用户设置记录
       if (data && data[0]) {
-        await supabase
+        const { error: settingsError } = await supabase
           .from(TABLES.USER_SETTINGS)
           .insert([{
             user_id: data[0].id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }])
+        
+        if (settingsError) {
+          console.warn('创建用户设置记录失败:', settingsError)
+        }
       }
 
       return { data: { user: data[0] }, error: null }

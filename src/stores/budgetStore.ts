@@ -62,10 +62,17 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
 
   // 设置当前行程
   setCurrentTrip: (trip) => {
-    set({ currentTrip: trip })
-    if (trip) {
-      get().calculateBudgetSummary()
-      get().loadExpenses(trip.id)
+    console.log('设置当前行程:', trip?.id)
+    const currentTrip = get().currentTrip
+    // 只有当行程真正改变时才更新
+    if (currentTrip?.id !== trip?.id) {
+      set({ currentTrip: trip })
+      if (trip) {
+        get().calculateBudgetSummary()
+        get().loadExpenses(trip.id)
+      }
+    } else {
+      console.log('行程未改变，跳过更新')
     }
   },
 
@@ -108,26 +115,30 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
 
   // 加载支出记录
   loadExpenses: async (tripId: string) => {
+    console.log('开始加载支出记录，tripId:', tripId)
     set({ loading: true, error: null })
 
     try {
       const { data, error } = await expenseService.getTripExpenses(tripId)
       
       if (error) {
+        console.error('加载支出记录失败:', error)
         throw new Error(error.message)
       }
 
-      set({ 
+      console.log('支出记录加载成功，数量:', data?.length || 0)
+      set({
         expenses: data || [],
-        loading: false 
+        loading: false
       })
       
       // 重新计算预算摘要
       get().calculateBudgetSummary()
     } catch (error: any) {
-      set({ 
+      console.error('加载支出记录异常:', error)
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
     }
   },
@@ -146,25 +157,48 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
       const { data, error } = await expenseService.addExpense(expenseData)
       
       if (error) {
+        console.error('添加支出失败:', error)
         throw new Error(error.message)
       }
 
       if (data && data[0]) {
         const newExpense = data[0]
-        set(state => ({
-          expenses: [...state.expenses, newExpense],
-          loading: false
-        }))
+        console.log('支出添加成功:', newExpense)
         
-        // 重新计算预算摘要
-        get().calculateBudgetSummary()
+        // 一次性更新所有状态，避免多次触发重新渲染
+        set(state => {
+          const updatedExpenses = [...state.expenses, newExpense]
+          const totalBudget = state.currentTrip?.budget || 0
+          const totalSpent = updatedExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+          const remainingBudget = totalBudget - totalSpent
+          
+          // 按类别统计支出
+          const categoryBreakdown: Record<string, number> = {}
+          updatedExpenses.forEach(expense => {
+            const category = expense.category
+            categoryBreakdown[category] = (categoryBreakdown[category] || 0) + expense.amount
+          })
+
+          return {
+            expenses: updatedExpenses,
+            budgetSummary: {
+              totalBudget,
+              totalSpent,
+              remainingBudget,
+              categoryBreakdown
+            },
+            loading: false
+          }
+        })
       } else {
+        console.error('添加支出失败: 没有返回数据')
         throw new Error('添加支出失败')
       }
     } catch (error: any) {
-      set({ 
+      console.error('添加支出异常:', error)
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
       throw error
     }
@@ -181,20 +215,37 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
         throw new Error(error.message)
       }
 
-      // 更新本地状态
-      set(state => ({
-        expenses: state.expenses.map(expense =>
+      // 一次性更新所有状态
+      set(state => {
+        const updatedExpenses = state.expenses.map(expense =>
           expense.id === expenseId ? { ...expense, ...updates } : expense
-        ),
-        loading: false
-      }))
-      
-      // 重新计算预算摘要
-      get().calculateBudgetSummary()
+        )
+        const totalBudget = state.currentTrip?.budget || 0
+        const totalSpent = updatedExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+        const remainingBudget = totalBudget - totalSpent
+        
+        // 按类别统计支出
+        const categoryBreakdown: Record<string, number> = {}
+        updatedExpenses.forEach(expense => {
+          const category = expense.category
+          categoryBreakdown[category] = (categoryBreakdown[category] || 0) + expense.amount
+        })
+
+        return {
+          expenses: updatedExpenses,
+          budgetSummary: {
+            totalBudget,
+            totalSpent,
+            remainingBudget,
+            categoryBreakdown
+          },
+          loading: false
+        }
+      })
     } catch (error: any) {
-      set({ 
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
       throw error
     }
@@ -211,18 +262,35 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
         throw new Error(error.message)
       }
 
-      // 更新本地状态
-      set(state => ({
-        expenses: state.expenses.filter(expense => expense.id !== expenseId),
-        loading: false
-      }))
-      
-      // 重新计算预算摘要
-      get().calculateBudgetSummary()
+      // 一次性更新所有状态
+      set(state => {
+        const updatedExpenses = state.expenses.filter(expense => expense.id !== expenseId)
+        const totalBudget = state.currentTrip?.budget || 0
+        const totalSpent = updatedExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+        const remainingBudget = totalBudget - totalSpent
+        
+        // 按类别统计支出
+        const categoryBreakdown: Record<string, number> = {}
+        updatedExpenses.forEach(expense => {
+          const category = expense.category
+          categoryBreakdown[category] = (categoryBreakdown[category] || 0) + expense.amount
+        })
+
+        return {
+          expenses: updatedExpenses,
+          budgetSummary: {
+            totalBudget,
+            totalSpent,
+            remainingBudget,
+            categoryBreakdown
+          },
+          loading: false
+        }
+      })
     } catch (error: any) {
-      set({ 
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
       throw error
     }

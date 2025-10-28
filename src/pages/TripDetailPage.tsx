@@ -13,7 +13,8 @@ import {
   Col,
   Spin,
   message,
-  Divider
+  Divider,
+  Alert
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useTripStore } from '../stores/tripStore'
@@ -23,6 +24,7 @@ import { dailyPlanService } from '../services/supabase'
 import { BudgetOverview } from '../components/Budget/BudgetOverview'
 import { ExpenseManager } from '../components/Budget/ExpenseManager'
 import { TripDetailMap } from '../components/Trip/TripDetailMap'
+import ErrorBoundary from '../components/Error/ErrorBoundary'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -30,7 +32,7 @@ const { TabPane } = Tabs
 const TripDetailPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
-  const { setCurrentTrip, deleteTrip, loading } = useTripStore()
+  const { setCurrentTrip, deleteTrip, loading, loadUserTrips } = useTripStore()
   const { setCurrentTrip: setBudgetTrip } = useBudgetStore()
   
   const [trip, setTrip] = useState<Trip | null>(null)
@@ -39,17 +41,21 @@ const TripDetailPage: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number>(1)
   const [highlightedActivity, setHighlightedActivity] = useState<{ dayNumber: number; activityIndex: number } | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(66) // 默认左侧占66%
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (tripId) {
+    console.log('useEffect triggered, tripId:', tripId, 'dataLoaded:', dataLoaded)
+    if (tripId && !dataLoaded) {
       loadTripData()
     }
-  }, [tripId])
+  }, [tripId, dataLoaded])
 
   const loadTripData = async () => {
     try {
+      setError(null)
+      console.log('开始加载行程数据，tripId:', tripId)
       // 加载用户行程列表并找到对应的行程
-      const { loadUserTrips } = useTripStore.getState()
       const userTrips = await loadUserTrips()
       console.log('加载的用户行程列表:', userTrips)
       
@@ -64,15 +70,22 @@ const TripDetailPage: React.FC = () => {
         // 加载每日计划
         const { data: plans } = await dailyPlanService.getTripDailyPlans(tripId!)
         if (plans) {
+          console.log('加载的每日计划数量:', plans.length)
           setDailyPlans(plans)
+        } else {
+          console.log('没有找到每日计划')
         }
+        console.log('行程数据加载完成')
+        setDataLoaded(true) // 标记数据已加载完成
       } else {
+        console.error('行程不存在，tripId:', tripId)
+        setError('行程不存在')
         message.error('行程不存在')
-        navigate('/trips')
       }
     } catch (error) {
+      console.error('加载行程数据失败:', error)
+      setError('加载行程数据失败')
       message.error('加载行程数据失败')
-      navigate('/trips')
     }
   }
 
@@ -108,14 +121,38 @@ const TripDetailPage: React.FC = () => {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Spin size="large" />
+        <div style={{ marginTop: 16 }}>
+          <Text type="secondary">加载行程数据中...</Text>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Alert
+          message="加载失败"
+          description={error}
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Button type="primary" onClick={() => navigate('/trips')}>
+          返回行程列表
+        </Button>
       </div>
     )
   }
 
   if (!trip) {
+    console.log('行程不存在，tripId:', tripId)
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Title level={4}>行程不存在</Title>
+        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+          行程ID: {tripId}
+        </Text>
         <Button type="primary" onClick={() => navigate('/trips')}>
           返回行程列表
         </Button>
@@ -381,7 +418,9 @@ const TripDetailPage: React.FC = () => {
               <BudgetOverview tripId={tripId!} />
             </Col>
             <Col span={16}>
-              <ExpenseManager tripId={tripId!} />
+              <ErrorBoundary>
+                <ExpenseManager tripId={tripId!} />
+              </ErrorBoundary>
             </Col>
           </Row>
         </TabPane>

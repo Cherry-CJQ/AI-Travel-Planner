@@ -24,13 +24,16 @@ const SettingsPage: React.FC = () => {
     mapApiKey?: string
   }) => {
     try {
+      console.log('开始保存设置:', { llmApiKey: values.llmApiKey ? '***' : 'empty' })
       await updateUserSettings({
         llm_api_key: values.llmApiKey,
         voice_api_key: values.voiceApiKey || undefined,
         map_api_key: values.mapApiKey || undefined
       })
+      console.log('设置保存成功')
       message.success('设置保存成功！')
     } catch (error: any) {
+      console.error('保存设置失败:', error)
       message.error(error.message || '保存设置失败')
     }
   }

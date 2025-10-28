@@ -163,24 +163,29 @@ export const useTripStore = create<TripStore>((set, get) => ({
     const { user } = useAppStore.getState()
     
     if (!user) {
+      console.log('用户未登录，无法加载行程')
       return []
     }
 
+    console.log('开始加载用户行程，用户ID:', user.id)
     set({ loading: true })
 
     try {
       const { data, error } = await tripService.getUserTrips(user.id)
       
       if (error) {
+        console.error('加载用户行程失败:', error)
         throw new Error(error.message)
       }
 
+      console.log('用户行程加载成功，数量:', data?.length || 0)
       set({ loading: false })
       return data || []
     } catch (error: any) {
-      set({ 
+      console.error('加载用户行程异常:', error)
+      set({
         error: error.message,
-        loading: false 
+        loading: false
       })
       return []
     }
