@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase配置
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rqpoxkshghfkmobhtoeh.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxcG94a3NoZ2hma21vYmh0b2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNzg1OTEsImV4cCI6MjA3Njk1NDU5MX0.GUCJ7VOI9RA4wZ4NHbkEplVHwLr1vAKiODwAWfi9fi4'
 
 // 创建Supabase客户端
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
 
 // 数据库表名常量
 export const TABLES = {

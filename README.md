@@ -31,20 +31,52 @@ AI旅行规划助手是一个基于AI大语言模型、语音识别和地图交�
 ### 使用预构建镜像
 
 1. **下载Docker镜像文件**：
-   - 直接下载根目录下的Docker镜像文件：[ai-travel-planner.tar](./ai-travel-planner.tar) (约24.8MB)
+   - 直接下载根目录下的Docker镜像文件：[ai-travel-planner.tar](./ai-travel-planner.tar) (约26.2MB)
 
 2. **加载镜像**：
    ```bash
    docker load -i ai-travel-planner.tar
    ```
 
-3. **运行容器**：
+3. **运行容器（必需配置环境变量）**：
    ```bash
-   docker run -d -p 8080:80 --name ai-travel-planner ai-travel-planner:latest
+   docker run -d \
+     -p 8080:80 \
+     --name ai-travel-planner \
+     -e VITE_SUPABASE_URL="您的Supabase项目URL" \
+     -e VITE_SUPABASE_ANON_KEY="您的Supabase匿名密钥" \
+     -e VITE_AMAP_JS_API_KEY="您的高德地图JS API密钥" \
+     -e VITE_AMAP_API_KEY="您的高德地图服务API密钥" \
+     -e VITE_LLM_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v1" \
+     -e VITE_LLM_MODEL="qwen-plus" \
+     -e VITE_APP_TITLE="AI旅行规划助手" \
+     ai-travel-planner:latest
    ```
+
+   **必需环境变量**：
+   - `VITE_SUPABASE_URL` - Supabase项目URL
+   - `VITE_SUPABASE_ANON_KEY` - Supabase匿名密钥
+   - `VITE_AMAP_JS_API_KEY` - 高德地图JS API密钥
+   - `VITE_AMAP_API_KEY` - 高德地图服务API密钥
+
+   **可选环境变量**（有默认值）：
+   - `VITE_LLM_BASE_URL` - LLM API基础URL（默认：阿里云百炼）
+   - `VITE_LLM_MODEL` - AI模型名称（默认：qwen-plus）
+   - `VITE_APP_TITLE` - 应用标题（默认：AI旅行规划助手）
 
 4. **访问应用**：
    打开浏览器访问 http://localhost:8080
+
+5. **点击导航栏‘API配置’，去配置你的阿里云百炼大模型，API以‘sk-’开头**
+
+6. **开始使用旅行规划AI助手！**
+   - 首页输入你的旅行计划，支持表单输入／文本输入／语音输入
+   - 完善表单必填内容、点击“生成旅行计划”
+   - 等待1-2分钟，履行规划生成完毕
+   - 可以查看行程规划，然后点击右上角或最下方的“保存行程”
+   - 保存后的行程可以去导航栏点击“我的行程”查看
+   - 在我的行程中点击“查看详情”可以查看具体的行程安排，这里可以和地图交互，也可以进行记账（支持手工记账和语音记账）
+
 
 ## 🛠️ 从源码构建
 
@@ -77,6 +109,6 @@ npm run dev
 
 详细配置说明请参考 `.env.example` 文件中的注释
 
-## 📄 许可证
+## � 许可证
 
 MIT License - 详见 [LICENSE](./LICENSE) 文件

@@ -4,17 +4,26 @@ import { MapLocation } from '../types/database'
 class MapService {
   private apiKey: string = ''
   private apiSecret: string = ''
-  private baseUrl: string = 'https://restapi.amap.com/v3'
+  private baseUrl: string = '/api/amap/v3'
 
   constructor() {
     // 从环境变量中获取默认API配置
+    // 支持两种方式：import.meta.env（开发环境）和 window.ENV（生产环境）
     // Web服务API只有Key，没有Secret
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
+    
+    // 首先尝试从 window.ENV 读取（Docker环境）
+    if (typeof window !== 'undefined' && window.ENV) {
+      if (window.ENV.VITE_AMAP_API_KEY) {
+        this.apiKey = window.ENV.VITE_AMAP_API_KEY
+      }
+    }
+    // 然后尝试从 import.meta.env 读取（开发环境）
+    else if (typeof import.meta !== 'undefined' && import.meta.env) {
       if (import.meta.env.VITE_AMAP_API_KEY) {
         this.apiKey = import.meta.env.VITE_AMAP_API_KEY
       }
-      // Web服务不需要Secret，所以这里不设置apiSecret
     }
+    // Web服务不需要Secret，所以这里不设置apiSecret
   }
 
   // 设置API配置
@@ -442,18 +451,52 @@ class MapService {
     }
   }
 
-  // 批量获取地点坐标
+  // 批量获取地点坐标（带请求间隔和重试机制）
   async batchGeocode(addresses: string[], city?: string): Promise<MapLocation[]> {
     const locations: MapLocation[] = []
     
-    for (const address of addresses) {
-      try {
-        const location = await this.geocode(address, city)
-        if (location) {
-          locations.push(location)
+    for (let i = 0; i < addresses.length; i++) {
+      const address = addresses[i]
+      let retryCount = 0
+      const maxRetries = 3
+      
+      while (retryCount < maxRetries) {
+        try {
+          // 添加请求间隔，避免超过QPS限制
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200)) // 200ms间隔
+          }
+          
+          const location = await this.geocode(address, city)
+          if (location) {
+            locations.push(location)
+            break // 成功则跳出重试循环
+          }
+        } catch (error: any) {
+          retryCount++
+          
+          // 如果是QPS限制错误，等待更长时间后重试
+          if (error.message && error.message.includes('CUQPS_HAS_EXCEEDED_THE_LIMIT')) {
+            console.warn(`QPS限制，等待后重试 (${retryCount}/${maxRetries}): ${address}`)
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)) // 指数退避
+            continue
+          }
+          
+          // 其他错误，记录并继续下一个地址
+          console.warn(`地址解析失败: ${address}`, error)
+          break
         }
-      } catch (error) {
-        console.warn(`地址解析失败: ${address}`, error)
+      }
+      
+      // 如果重试后仍然失败，添加一个默认位置
+      if (retryCount === maxRetries) {
+        console.warn(`地址解析最终失败，使用默认位置: ${address}`)
+        locations.push({
+          lat: 35.8617,
+          lng: 104.1954,
+          name: address,
+          address: '中国'
+        })
       }
     }
     
@@ -533,7 +576,7 @@ class MapService {
       size: size
     }
     
-    let url = `https://restapi.amap.com/v3/staticmap?`
+    let url = `/api/amap/v3/staticmap?`
     if (this.apiSecret) {
       const sig = this.generateSignature(params)
       url += Object.keys(params)

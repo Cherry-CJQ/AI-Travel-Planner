@@ -224,7 +224,17 @@ export const TripMap: React.FC<TripMapProps> = ({
       const script = document.createElement('script')
       // Web端(JS API)需要单独的Key，优先使用JS API专用Key，如果没有则使用通用Key
       // Web端(JS API)有Key和Secret，但JS加载时只需要Key
-      const jsApiKey = import.meta.env.VITE_AMAP_JS_API_KEY || import.meta.env.VITE_AMAP_API_KEY || ''
+      // 支持两种方式：import.meta.env（开发环境）和 window.ENV（生产环境）
+      let jsApiKey = ''
+      
+      // 首先尝试从 window.ENV 读取（Docker环境）
+      if (typeof window !== 'undefined' && window.ENV) {
+        jsApiKey = window.ENV.VITE_AMAP_JS_API_KEY || window.ENV.VITE_AMAP_API_KEY || ''
+      }
+      // 然后尝试从 import.meta.env 读取（开发环境）
+      if (!jsApiKey && typeof import.meta !== 'undefined' && import.meta.env) {
+        jsApiKey = import.meta.env.VITE_AMAP_JS_API_KEY || import.meta.env.VITE_AMAP_API_KEY || ''
+      }
       
       // 检查API密钥是否配置
       if (!jsApiKey) {
